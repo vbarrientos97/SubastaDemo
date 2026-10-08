@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" role="img" aria-labelledby="title description">
+  <title id="title">Certificado genealógico de ejemplo</title>
+  <desc id="description">Documento de muestra, pendiente de reemplazar por el certificado del animal.</desc>
+  <rect width="900" height="600" fill="#f7f4eb"/>
+  <rect x="24" y="24" width="852" height="552" rx="10" fill="none" stroke="#8a6a36" stroke-width="4"/>
+  <rect x="38" y="38" width="824" height="524" rx="6" fill="none" stroke="#c6ad78" stroke-width="2"/>
+  <path d="M450 68 464 97 496 102 473 124 478 156 450 141 422 156 427 124 404 102 436 97Z" fill="#b18a4a"/>
+  <text x="450" y="205" text-anchor="middle" fill="#3b3428" font-family="Georgia,serif" font-size="35" font-weight="bold">CERTIFICADO GENEALÓGICO</text>
+  <text x="450" y="245" text-anchor="middle" fill="#75684f" font-family="Arial,sans-serif" font-size="18" letter-spacing="4">DOCUMENTO DE EJEMPLO</text>
+  <line x1="160" y1="276" x2="740" y2="276" stroke="#c6ad78" stroke-width="2"/>
+  <text x="450" y="329" text-anchor="middle" fill="#514632" font-family="Arial,sans-serif" font-size="22">Pendiente de cargar el certificado del animal</text>
+  <text x="450" y="372" text-anchor="middle" fill="#75684f" font-family="Arial,sans-serif" font-size="16">La imagen real se puede agregar desde la ficha del lote.</text>
+  <circle cx="450" cy="457" r="44" fill="none" stroke="#c6ad78" stroke-width="2"/>
+  <text x="450" y="465" text-anchor="middle" fill="#8a6a36" font-family="Georgia,serif" font-size="24" font-weight="bold">MUESTRA</text>
+</svg>
