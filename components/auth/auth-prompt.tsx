@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect } from 'react'
+import { useRef } from 'react'
+import { useModalFocus } from '@/hooks/use-modal-focus'
 import { X } from 'lucide-react'
 import { btnPrimary, btnPrimaryMotion, panel } from '@/lib/styles'
 import { cn } from '@/lib/utils'
@@ -15,14 +16,8 @@ export function AuthPrompt({
   onClose: () => void
   nextPath: string
 }) {
-  useEffect(() => {
-    if (!open) return
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef, open, onClose)
 
   if (!open) return null
 
@@ -31,6 +26,8 @@ export function AuthPrompt({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+      ref={dialogRef}
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-labelledby="auth-prompt-title"

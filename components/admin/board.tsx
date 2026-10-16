@@ -5,6 +5,7 @@ import { createPortal, flushSync } from 'react-dom'
 import Image from 'next/image'
 import { Maximize2, Search, X } from 'lucide-react'
 import { BoardProjection } from '@/components/admin/board-projection'
+import { RegionSelect } from '@/components/admin/region-select'
 import { clientOfLot, regionOfLot, type Client } from '@/lib/domain/account'
 import {
   boardLots,
@@ -143,7 +144,7 @@ export function Board({ auctionId }: { auctionId: string }) {
             <button
               type="button"
               onClick={openBoard}
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-sm font-semibold text-foreground transition hover:border-foreground/25 hover:bg-foreground hover:text-background"
+              className="hidden shrink-0 items-center gap-2 rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-sm font-semibold text-foreground transition hover:border-foreground/25 hover:bg-foreground hover:text-background sm:inline-flex"
             >
               <Maximize2 className="h-4 w-4" />
               Ampliar
@@ -151,7 +152,10 @@ export function Board({ auctionId }: { auctionId: string }) {
           </div>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto px-4 py-3">
+        <div className="px-3 py-3 sm:hidden">
+          <RegionSelect value={regionId} onChange={pickRegion} />
+        </div>
+        <div className="hidden gap-2 overflow-x-auto px-4 py-3 sm:flex">
           <FilterChip active={regionId === 'todos'} onClick={() => pickRegion('todos')}>
             Todos
           </FilterChip>
@@ -168,15 +172,15 @@ export function Board({ auctionId }: { auctionId: string }) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[34rem] text-left text-sm sm:min-w-[56rem]">
+          <table className="w-full table-fixed text-left text-xs sm:min-w-[56rem] sm:table-auto sm:text-sm">
             <thead>
               <tr className={cn(caption, 'border-y border-border text-muted-foreground')}>
-                <th className="px-4 py-2.5 font-semibold">Lote</th>
+                <th className="w-[14%] pl-3 pr-2 py-2.5 font-semibold sm:w-auto sm:px-4">Lote</th>
                 <th className="hidden px-4 py-2.5 font-semibold sm:table-cell">Padre</th>
                 <th className="hidden px-4 py-2.5 font-semibold sm:table-cell">Madre</th>
-                <th className="px-4 py-2.5 font-semibold">Sexo</th>
-                <th className="px-4 py-2.5 font-semibold">Precio</th>
-                <th className="px-4 py-2.5 font-semibold">Comprador</th>
+                <th className="w-[20%] px-2 py-2.5 font-semibold sm:w-auto sm:px-4">Sexo</th>
+                <th className="w-[24%] px-2 py-2.5 font-semibold sm:w-auto sm:px-4">Precio</th>
+                <th className="px-2 py-2.5 font-semibold sm:px-4">Comprador</th>
               </tr>
             </thead>
             <tbody>
@@ -196,7 +200,7 @@ export function Board({ auctionId }: { auctionId: string }) {
           ) : null}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
+        <div className="flex items-center justify-center gap-2 border-t border-border px-4 py-3 sm:justify-end">
           <button
             type="button"
             disabled={current === 0}
@@ -307,7 +311,7 @@ function SaleRow({
       }}
       className="cursor-pointer border-b border-border transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none last:border-b-0"
     >
-      <td className="px-4 py-3 font-semibold tabular text-foreground">
+      <td className="pl-3 pr-2 py-3 font-semibold tabular text-foreground sm:px-4">
         <LotNumber lot={lot} live={live} />
       </td>
       <td className="hidden max-w-48 truncate px-4 py-3 text-muted-foreground sm:table-cell">
@@ -316,15 +320,15 @@ function SaleRow({
       <td className="hidden max-w-48 truncate px-4 py-3 text-muted-foreground sm:table-cell">
         {lot.dam || '—'}
       </td>
-      <td className="px-4 py-3 font-medium text-muted-foreground">
+      <td className="px-2 py-3 font-medium text-muted-foreground sm:px-4">
         {lot.category === 'macho' ? 'Macho' : 'Hembra'}
       </td>
-      <td className="px-4 py-3 font-semibold tabular text-foreground">
+      <td className="break-words px-2 py-3 font-semibold tabular text-foreground sm:px-4">
         {price > 0 ? formatUSD(price) : '—'}
       </td>
       <td
         className={cn(
-          'px-4 py-3 font-semibold',
+          'break-words px-2 py-3 font-semibold sm:px-4',
           region ? regionInkClass[region.ink] : 'text-muted-foreground',
         )}
       >

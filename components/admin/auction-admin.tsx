@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, Pencil, Trash2, ArrowRight, ArrowLeft, RefreshCw, CircleCheck, CircleAlert } from 'lucide-react'
+import { Plus, Pencil, Trash2, ArrowRight, ArrowLeft, RefreshCw, CircleCheck, CircleAlert, SlidersHorizontal } from 'lucide-react'
 import { useSession } from '@/components/auth/session-provider'
 import { useEntityEditor } from '@/hooks/use-entity-editor'
 import { DeleteButton } from '@/components/admin/delete-button'
@@ -18,7 +18,7 @@ import {
   type AuctionInput,
   type AuctionStatus,
 } from '@/lib/domain/auction'
-import { btnPrimary, btnPrimaryMotion, eyebrow, field, panel } from '@/lib/styles'
+import { btnPrimary, btnPrimaryMotion, eyebrow, field, filterTriggerClass, panel } from '@/lib/styles'
 import { cn } from '@/lib/utils'
 import { BackLink } from '@/components/layout/back-link'
 import { AuctionDateFilter, type DateRange } from '@/components/admin/auction-date-filter'
@@ -36,6 +36,7 @@ const empty = {
 export function AuctionAdminList() {
   const { state, createAuction, updateAuction, deleteAuction } = useSession()
   const [suggestAddLots, setSuggestAddLots] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [filters, setFilters] = useState<{ name: string; location: string; date: DateRange | null }>({ name: '', location: '', date: null })
   const [confirmCreateLeave, setConfirmCreateLeave] = useState(false)
   const [pendingStatusAction, setPendingStatusAction] = useState<{ auctionId: string; status: AuctionStatus } | null>(null)
@@ -116,6 +117,17 @@ export function AuctionAdminList() {
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-4">
         <h1 className="font-display text-xl font-bold text-foreground">Subastas</h1>
         <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            aria-label="Filtros"
+            aria-expanded={filtersOpen}
+            aria-controls="auction-filters"
+            onClick={() => setFiltersOpen((open) => !open)}
+            className={filterTriggerClass(filtersOpen || hasFilters)}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">Filtros</span>
+          </button>
           {formOpen ? null : (
             <button
               type="button"
@@ -194,7 +206,7 @@ export function AuctionAdminList() {
           </Link>
         </div>
       ) : null}
-      <div className="grid gap-2 border-b border-border p-3 sm:grid-cols-3 sm:p-4">
+      <div id="auction-filters" hidden={!filtersOpen} className={cn('gap-2 border-b border-border p-3 sm:grid-cols-3 sm:p-4', filtersOpen ? 'grid' : 'hidden')}>
         <label className="sr-only" htmlFor="auction-filter-name">Filtrar por nombre</label>
         <input
           id="auction-filter-name"
@@ -237,38 +249,38 @@ export function AuctionAdminList() {
         {filteredAuctions.map((auction) => (
           <li
             key={auction.id}
-            className="group flex flex-col gap-2 border-b border-border px-3 py-2 last:border-b-0 lg:flex-row lg:items-center lg:justify-between lg:px-2 lg:py-1"
+            className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 border-b border-border px-3 py-2 last:border-b-0 lg:px-2 lg:pt-1 lg:pb-4"
           >
-            <div className="min-w-0 flex-1 px-1 py-2 lg:px-2">
+            <div className="col-span-2 min-w-0 px-1 py-2 lg:col-span-1 lg:px-2">
               <span className="block truncate text-sm font-semibold text-foreground lg:text-lg">
                 {auction.title}
               </span>
               <span className={cn(eyebrow, 'block text-muted-foreground lg:text-sm')}>
                 <span className={cn('font-bold', auctionStatusColor(auction.status))}>{auctionStatusLabel(auction.status)}</span> · {auction.clientIds.length} clientes
               </span>
-              <Link
-                href={`/admin/subastas/${auction.id}`}
-                aria-label={`Gestionar subasta ${auction.title}`}
-                className="mt-2 inline-flex min-h-11 w-fit items-center gap-1.5 rounded-xl bg-surface-2 px-3 text-sm font-semibold text-foreground ring-1 ring-border transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                Gestionar
-                <ArrowRight className="h-4 w-4 text-primary" />
-              </Link>
             </div>
-            <div className="flex w-full shrink-0 items-center justify-between gap-3 px-1 lg:w-auto lg:justify-start">
+            <Link
+              href={`/admin/subastas/${auction.id}`}
+              aria-label={`Gestionar subasta ${auction.title}`}
+              className="col-start-1 row-start-2 inline-flex min-h-11 w-fit items-center gap-1.5 rounded-xl bg-surface-2 px-2.5 text-sm font-semibold text-foreground ring-1 ring-border transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:ml-2 lg:px-3"
+            >
+              Gestionar
+              <ArrowRight className="h-4 w-4 text-primary" />
+            </Link>
+            <div className="col-start-2 row-start-2 flex shrink-0 items-center justify-end gap-1 lg:row-span-2 lg:row-start-1 lg:gap-3 lg:px-1">
               {pendingId === auction.id ? (
                 <>
                   <button
                     type="button"
                     onClick={() => finishRemove(auction.id, deleteAuction(auction.id))}
-                    className="text-sm font-semibold text-primary"
+                    className="min-h-11 px-1 text-sm font-semibold text-primary"
                   >
                     Confirmar
                   </button>
                   <button
                     type="button"
                     onClick={() => setPendingId(null)}
-                    className="text-sm font-semibold text-muted-foreground"
+                    className="min-h-11 px-1 text-sm font-semibold text-muted-foreground"
                   >
                     Cancelar
                   </button>
@@ -288,11 +300,11 @@ export function AuctionAdminList() {
                       href={`/admin/subastas/${auction.id}/editar`}
                       aria-label="Editar"
                       title="Editar"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-foreground transition hover:bg-accent"
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <Pencil className="h-4 w-4" />
                     </Link>
-                    <DeleteButton onClick={() => setPendingId(auction.id)} />
+                    <DeleteButton onClick={() => setPendingId(auction.id)} className="h-11 w-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />
                   </span>
                 </>
               )}
@@ -688,10 +700,13 @@ function AuctionStatusActions({
           <button
             key={action.status}
             type="button"
+            aria-label={action.label}
+            title={action.label}
             onClick={(event) => { event.stopPropagation(); onAction(action.status) }}
             className={cn(
               'inline-flex min-h-11 items-center justify-center rounded-xl px-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
               'border border-border bg-surface text-foreground hover:bg-accent',
+              compact && 'px-2 text-xs lg:px-3 lg:text-sm',
             )}
           >
             {action.label}

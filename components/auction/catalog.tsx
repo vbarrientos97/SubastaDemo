@@ -15,7 +15,7 @@ import {
   sortLots,
   type LotSort,
 } from '@/lib/domain/lot'
-import { caption, panelSm, selectCompactField } from '@/lib/styles'
+import { caption, filterTriggerClass, panelSm, selectCompactField } from '@/lib/styles'
 import { cn } from '@/lib/utils'
 import { LotCard } from '@/components/auction/lot-card'
 import { LotMobileList } from '@/components/auction/lot-mini-list'
@@ -55,10 +55,12 @@ function SexFilters({
   onChange,
   counts,
   variant,
+  className,
 }: {
   value: SexFilter
   onChange: (value: SexFilter) => void
   counts: { todos: number; hembra: number; macho: number }
+  className?: string
   variant: 'segmented' | 'chips'
 }) {
   const filters: { key: SexFilter; label: string }[] = [
@@ -72,7 +74,8 @@ function SexFilters({
       className={cn(
         variant === 'segmented'
           ? 'flex shrink-0 items-center rounded-xl bg-background/50 p-1'
-          : 'no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4',
+          : 'grid min-w-0 grid-cols-3 gap-1',
+        className,
       )}
       role="group"
       aria-label="Sexo"
@@ -84,8 +87,10 @@ function SexFilters({
           onClick={() => onChange(item.key)}
           aria-pressed={value === item.key}
           className={cn(
-            'text-sm font-semibold transition',
-            variant === 'segmented' ? 'rounded-lg px-3 py-1.5' : 'shrink-0 rounded-full px-4 py-1.5',
+            'font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+            variant === 'segmented'
+              ? 'rounded-lg px-3 py-1.5 text-sm'
+              : 'min-h-11 min-w-0 break-words rounded-full px-1.5 py-1.5 text-xs',
             value === item.key
               ? 'bg-primary text-primary-foreground dark:bg-primary dark:text-primary-foreground'
               : variant === 'segmented'
@@ -160,9 +165,11 @@ function PriceFields({
 export function Catalog({
   lots,
   publicView = false,
+  buyerView = false,
 }: {
   lots: Lot[]
   publicView?: boolean
+  buyerView?: boolean
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -275,29 +282,28 @@ export function Catalog({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 lg:hidden">
-        <div className="flex items-center gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 lg:hidden">
+        <div className={cn('flex min-w-0 items-center', buyerView && 'col-span-2 pr-14')}>
           <LotSearch
             value={query}
             onChange={(value) => setParams({ q: value, page: '1' })}
             framed
           />
+        </div>
           <button
             type="button"
             aria-label="Filtros"
             aria-expanded={filtersOpen}
             onClick={() => setFiltersOpen((open) => !open)}
             className={cn(
-              'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border bg-surface transition',
-              filtersOpen || filtersActive
-                ? 'border-primary text-primary dark:border-primary dark:text-primary'
-                : 'border-input text-muted-foreground hover:text-foreground',
+              filterTriggerClass(filtersOpen || filtersActive),
+              'col-start-2 h-11 w-11',
+              buyerView ? 'row-start-2' : 'row-start-1',
             )}
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>
-        </div>
-        {filtersOpen ? <div className={cn(panelSm, 'flex flex-col gap-3 p-3')}>
+        {filtersOpen ? <div className={cn(panelSm, 'col-span-2 flex flex-col gap-3 p-3', buyerView ? 'row-start-3' : 'row-start-2')}>
           <label className="flex min-h-11 items-center gap-2 rounded-xl border border-input bg-field px-3 text-sm dark:bg-surface">
             <span className="shrink-0 font-medium text-muted-foreground">Color</span>
             <select value={color} onChange={(event) => setParams({ color: event.target.value, page: '1' })} className="min-w-0 flex-1 bg-transparent font-semibold text-foreground outline-none">
@@ -318,6 +324,7 @@ export function Catalog({
           onChange={(value) => setParams({ sexo: value, page: '1' })}
           counts={counts}
           variant="chips"
+          className={buyerView ? 'col-start-1 row-start-2' : 'col-span-2'}
         />
       </div>
 

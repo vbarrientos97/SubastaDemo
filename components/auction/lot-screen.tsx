@@ -94,6 +94,7 @@ export function LotScreen({ id }: { id: string }) {
 
       <div className="lg:mx-auto lg:grid lg:max-w-6xl lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-x-10 lg:px-6 lg:py-8">
       <div className="lg:col-start-1">
+      <div className="mb-4 hidden lg:block"><BackLink href={backHref} historyBack={!!safeReturn} /></div>
       <div className="flex items-center gap-3 px-4 pt-4 lg:px-0 lg:pt-0">
         {active ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary-foreground">
@@ -225,7 +226,6 @@ export function LotScreen({ id }: { id: string }) {
       </aside>
 
       <main className="flex flex-col gap-5 px-4 py-5 lg:col-start-1 lg:px-0 lg:py-0">
-        <div className="hidden lg:block"><BackLink href={backHref} historyBack={!!safeReturn} /></div>
         <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-border bg-surface p-4 text-sm">
           <div><dt className="text-muted-foreground">Raza</dt><dd className="mt-1 font-semibold">{lot.breed || '—'}</dd></div>
           <div><dt className="text-muted-foreground">Color</dt><dd className="mt-1 font-semibold">{lot.color ?? '—'}</dd></div>

@@ -3,11 +3,11 @@ export type FavoritesView = 'grid' | 'columns'
 export const FAVORITES_VIEW_COOKIE = 'favoritos.vista'
 
 export function parseFavoritesView(value: string | null | undefined): FavoritesView {
-  return value === 'columns' ? 'columns' : 'grid'
+  return value === 'grid' ? 'grid' : 'columns'
 }
 
 export function readFavoritesViewCookie(): FavoritesView {
-  if (typeof document === 'undefined') return 'grid'
+  if (typeof document === 'undefined') return 'columns'
   const match = document.cookie.match(/(?:^|; )favoritos\.vista=([^;]*)/)
   return parseFavoritesView(match?.[1] ? decodeURIComponent(match[1]) : null)
 }

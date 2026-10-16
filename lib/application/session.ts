@@ -25,7 +25,7 @@ import {
   type EventTypeId,
 } from '@/lib/domain/event'
 import { addFavoriteId, pruneFavoriteIds, toggleFavoriteId } from '@/lib/domain/favorites'
-import { lotImages, normalizeLotColor, validateLot, type LotInput } from '@/lib/domain/lot'
+import { isActiveLot, lotImages, normalizeLotColor, validateLot, type LotInput } from '@/lib/domain/lot'
 import { isRegionId } from '@/lib/domain/region'
 import type { Result, SessionRepository, SessionState } from '@/lib/application/session-repository'
 
@@ -39,10 +39,33 @@ function mutateSession(
 ): Result<SessionState> {
   const state = openSession(repo)
   if (!state) return { ok: false, error: 'No se pudo abrir la sesión.' }
-  const result = change(state)
+  // Preserve legacy favorites before switching accounts.
+  const previousFavorites = { ...state.favoritesByAccount }
+  if (state.currentUserId) previousFavorites[state.currentUserId] = state.favoriteLotIds
+  const result = change({ ...state, favoritesByAccount: previousFavorites })
   if (!result.ok) return result
-  repo.save(result.value)
-  return result
+  const next = result.value
+  const favoritesByAccount = Object.fromEntries(
+    Object.entries(next.favoritesByAccount ?? {}).filter(([id]) => next.accounts.some((account) => account.id === id))
+      .map(([id, ids]) => [id, pruneFavoriteIds(ids, next.lots)]),
+  )
+  if (next.currentUserId) favoritesByAccount[next.currentUserId] = pruneFavoriteIds(next.favoriteLotIds, next.lots)
+  const value = { ...next, favoritesByAccount, favoriteLotIds: next.currentUserId ? favoritesByAccount[next.currentUserId] ?? [] : [] }
+  try {
+    repo.save(value)
+    return { ok: true, value }
+  } catch {
+    return { ok: false, error: 'No se pudieron guardar los cambios. Inténtalo de nuevo.' }
+  }
+}
+
+function mutateAdminSession(
+  repo: SessionRepository,
+  change: (state: SessionState) => Result<SessionState>,
+): Result<SessionState> {
+  return mutateSession(repo, (state) => currentAccount(state)?.role === 'admin'
+    ? change(state)
+    : { ok: false, error: 'Solo los administradores pueden realizar esta acción.' })
 }
 
 function lotCommerce(input: LotInput) {
@@ -74,7 +97,7 @@ function readEvent(input: EventInput): Result<ReturnType<typeof eventFields>> {
 }
 
 export function openSession(repo: SessionRepository) {
-  return repo.load()
+  try { return repo.load() } catch { return null }
 }
 
 export function currentAccount(state: SessionState) {
@@ -101,7 +124,7 @@ export function signIn(
         ? requestedAuction.id
         : buyerHomeAuctionId(state.auctions, account.clientId)
       : null
-    return { ok: true, value: { ...state, currentUserId: account.id, currentAuctionId } }
+    return { ok: true, value: { ...state, currentUserId: account.id, favoriteLotIds: state.favoritesByAccount?.[account.id] ?? [], currentAuctionId } }
   })
 }
 
@@ -131,6 +154,7 @@ export function registerBuyer(repo: SessionRepository, input: RegisterInput): Re
         clients: [...state.clients, client],
         accounts: [...state.accounts, account],
         currentUserId: account.id,
+        favoriteLotIds: [],
         currentAuctionId: buyerHomeAuctionId(state.auctions, client.id),
       },
     }
@@ -140,7 +164,7 @@ export function registerBuyer(repo: SessionRepository, input: RegisterInput): Re
 export function signOut(repo: SessionRepository): SessionState | null {
   const result = mutateSession(repo, (state) => ({
     ok: true,
-    value: { ...state, currentUserId: null, currentAuctionId: null },
+    value: { ...state, currentUserId: null, currentAuctionId: null, favoriteLotIds: [], pendingFavoriteLotId: null },
   }))
   return result.ok ? result.value : null
 }
@@ -184,7 +208,7 @@ function readAuction(input: AuctionInput) {
 }
 
 export function createAuction(repo: SessionRepository, input: AuctionInput): Result<SessionState> {
-  return mutateSession(repo, (state) => {
+  return mutateAdminSession(repo, (state) => {
     if (input.status !== 'creada') return { ok: false, error: 'Una subasta nueva siempre empieza como creada.' }
     const parsed = readAuction(input)
     if (!parsed.ok) return parsed
@@ -202,7 +226,7 @@ export function updateAuction(
   id: string,
   input: AuctionInput,
 ): Result<SessionState> {
-  return mutateSession(repo, (state) => {
+  return mutateAdminSession(repo, (state) => {
     const current = state.auctions.find((auction) => auction.id === id)
     if (!current) return { ok: false, error: 'Esa subasta ya no está.' }
     const now = new Date()
@@ -248,12 +272,12 @@ export function setAuctionClients(
   id: string,
   clientIds: string[],
 ): Result<SessionState> {
-  return mutateSession(repo, (state) => {
+  return mutateAdminSession(repo, (state) => {
     if (!state.auctions.some((auction) => auction.id === id)) {
       return { ok: false, error: 'Esa subasta ya no está.' }
     }
     const known = new Set(state.clients.map((client) => client.id))
-    const nextIds = clientIds.filter((clientId) => known.has(clientId))
+    const nextIds = [...new Set(clientIds.filter((clientId) => known.has(clientId)))]
     return {
       ok: true,
       value: {
@@ -271,7 +295,7 @@ export function createClient(
   input: ClientInput,
   auctionId?: string,
 ): Result<SessionState> {
-  return mutateSession(repo, (state) => {
+  return mutateAdminSession(repo, (state) => {
     if (auctionId && !state.auctions.some((auction) => auction.id === auctionId)) {
       return { ok: false, error: 'Esa subasta ya no está.' }
     }
@@ -319,7 +343,7 @@ export function createLot(
   auctionId: string,
   input: LotInput,
 ): Result<SessionState> {
-  return mutateSession(repo, (state) => {
+  return mutateAdminSession(repo, (state) => {
     if (!state.auctions.some((auction) => auction.id === auctionId)) {
       return { ok: false, error: 'Esa subasta ya no está.' }
     }
@@ -363,7 +387,7 @@ export function createLot(
 }
 
 export function deleteAuction(repo: SessionRepository, id: string): Result<SessionState> {
-  return mutateSession(repo, (state) => {
+  return mutateAdminSession(repo, (state) => {
     if (!state.auctions.some((auction) => auction.id === id)) {
       return { ok: false, error: 'Esa subasta ya no está.' }
     }
@@ -373,6 +397,9 @@ export function deleteAuction(repo: SessionRepository, id: string): Result<Sessi
       value: {
         ...state,
         auctions: state.auctions.filter((auction) => auction.id !== id),
+        currentAuctionId: state.currentAuctionId === id ? null : state.currentAuctionId,
+        events: state.events.map((event) => event.lotId && !lots.some((lot) => lot.id === event.lotId) ? { ...event, lotId: undefined } : event),
+        pendingFavoriteLotId: lots.some((lot) => lot.id === state.pendingFavoriteLotId) ? state.pendingFavoriteLotId : null,
         lots,
         favoriteLotIds: pruneFavoriteIds(state.favoriteLotIds, lots),
       },
@@ -385,7 +412,7 @@ export function updateClient(
   id: string,
   input: ClientInput,
 ): Result<SessionState> {
-  return mutateSession(repo, (state) => {
+  return mutateAdminSession(repo, (state) => {
     if (!state.clients.some((client) => client.id === id)) {
       return { ok: false, error: 'Ese cliente ya no está.' }
     }
@@ -412,9 +439,20 @@ export function updateClient(
 }
 
 export function deleteClient(repo: SessionRepository, id: string): Result<SessionState> {
-  return mutateSession(repo, (state) => {
-    if (!state.clients.some((client) => client.id === id)) {
+  return mutateAdminSession(repo, (state) => {
+    const client = state.clients.find((item) => item.id === id)
+    if (!client) {
       return { ok: false, error: 'Ese cliente ya no está.' }
+    }
+    const clientName = client.name.trim().toLocaleLowerCase()
+    const hasHistory = state.lots.some((lot) =>
+      lot.winnerClientId === id || lot.leaderClientId === id ||
+      (!lot.leaderClientId && lot.leader?.trim().toLocaleLowerCase() === clientName) ||
+      lot.bids?.some((bid) => bid.bidderClientId ? bid.bidderClientId === id : bid.bidder.trim().toLocaleLowerCase() === clientName) ||
+      (lot.soldToPaddle != null && lot.soldToPaddle === Number.parseInt(client.paddle, 10)),
+    )
+    if (hasHistory) {
+      return { ok: false, error: 'Este cliente tiene historial de pujas o adjudicaciones. Desasócialo de la subasta para conservar el historial.' }
     }
     const accounts = state.accounts.filter((account) => account.clientId !== id)
     return {
@@ -422,20 +460,18 @@ export function deleteClient(repo: SessionRepository, id: string): Result<Sessio
       value: {
         ...state,
         clients: state.clients.filter((client) => client.id !== id),
+        auctions: state.auctions.map((auction) => ({ ...auction, clientIds: auction.clientIds.filter((clientId) => clientId !== id) })),
         accounts,
         currentUserId: accounts.some((account) => account.id === state.currentUserId)
           ? state.currentUserId
           : null,
-        lots: state.lots.map((lot) =>
-          lot.winnerClientId === id ? { ...lot, winnerClientId: undefined } : lot,
-        ),
       },
     }
   })
 }
 
 export function updateLot(repo: SessionRepository, id: string, input: LotInput): Result<SessionState> {
-  return mutateSession(repo, (state) => {
+  return mutateAdminSession(repo, (state) => {
     const current = state.lots.find((lot) => lot.id === id)
     if (!current) return { ok: false, error: 'Ese lote ya no está.' }
     const error = validateLot(input)
@@ -467,7 +503,7 @@ export function updateLot(repo: SessionRepository, id: string, input: LotInput):
 }
 
 export function deleteLot(repo: SessionRepository, id: string): Result<SessionState> {
-  return mutateSession(repo, (state) => {
+  return mutateAdminSession(repo, (state) => {
     const current = state.lots.find((lot) => lot.id === id)
     if (!current) return { ok: false, error: 'Ese lote ya no está.' }
     const counted = current.inCatalog !== false
@@ -478,6 +514,7 @@ export function deleteLot(repo: SessionRepository, id: string): Result<SessionSt
         ...state,
         lots,
         favoriteLotIds: pruneFavoriteIds(state.favoriteLotIds, lots),
+        pendingFavoriteLotId: state.pendingFavoriteLotId === id ? null : state.pendingFavoriteLotId,
         events: state.events.map((event) =>
           event.lotId === id ? { ...event, lotId: undefined } : event,
         ),
@@ -509,7 +546,8 @@ export function placeBid(repo: SessionRepository, lotId: string, amount: number)
       : null
     const access = bidAccess(currentAuction, account, client)
     if (!access.ok) return { ok: false, error: bidDenialMessage(access.reason) }
-    if (!Number.isFinite(amount) || amount <= lot.currentBid) {
+    if (!isActiveLot(lot) || lot.inCatalog === false) return { ok: false, error: 'Este lote no está habilitado para pujar.' }
+    if (!Number.isSafeInteger(amount) || amount <= lot.currentBid) {
       return { ok: false, error: 'La puja debe superar la oferta actual.' }
     }
     const now = new Date()
@@ -517,7 +555,7 @@ export function placeBid(repo: SessionRepository, lotId: string, amount: number)
     const bid = {
       bidder,
       bidderClientId: client?.id,
-      amount: Math.round(amount),
+      amount,
       date: new Intl.DateTimeFormat('es-PA', { dateStyle: 'short' }).format(now),
       time: new Intl.DateTimeFormat('es-PA', { timeStyle: 'short' }).format(now),
     }
@@ -583,7 +621,7 @@ export function consumePendingFavorite(repo: SessionRepository): Result<SessionS
 }
 
 export function createEvent(repo: SessionRepository, input: EventInput): Result<SessionState> {
-  return mutateSession(repo, (state) => {
+  return mutateAdminSession(repo, (state) => {
     const event = readEvent(input)
     if (!event.ok) return event
     return {
@@ -598,7 +636,7 @@ export function updateEvent(
   id: string,
   input: EventInput,
 ): Result<SessionState> {
-  return mutateSession(repo, (state) => {
+  return mutateAdminSession(repo, (state) => {
     if (!state.events.some((event) => event.id === id)) {
       return { ok: false, error: 'Ese evento ya no está.' }
     }
@@ -617,7 +655,7 @@ export function updateEvent(
 }
 
 export function deleteEvent(repo: SessionRepository, id: string): Result<SessionState> {
-  return mutateSession(repo, (state) => {
+  return mutateAdminSession(repo, (state) => {
     if (!state.events.some((event) => event.id === id)) {
       return { ok: false, error: 'Ese evento ya no está.' }
     }

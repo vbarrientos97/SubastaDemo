@@ -76,7 +76,7 @@ export function SignInForm() {
           </span>
         </label>
 
-        {error ? <p className="mb-4 text-sm font-medium text-destructive dark:text-[#ffb4b4]">{error}</p> : null}
+        {error ? <p role="alert" className="mb-4 text-sm font-medium text-destructive dark:text-[#ffb4b4]">{error}</p> : null}
 
         <button
           type="submit"

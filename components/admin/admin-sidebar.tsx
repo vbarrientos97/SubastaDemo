@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, Menu, X } from 'lucide-react'
 import { BrandMark } from '@/components/layout/brand-mark'
 import { adminNav, auctionWorkspaceNav, isNavItemActive, type NavItem } from '@/lib/navigation'
-import { panel } from '@/lib/styles'
+import { mobileMenuTrigger, panel } from '@/lib/styles'
 import { cn } from '@/lib/utils'
 import { AccountDrawerSection } from '@/components/account/profile-menu'
 
@@ -33,7 +33,7 @@ export function AdminSidebar() {
   const match = pathname.match(/^\/admin\/subastas\/([^/]+)/)
   const auctionId = match?.[1]
   const workspaceItems = auctionId ? auctionWorkspaceNav(auctionId) : []
-  const administrationItems = auctionId ? [] : adminNav
+  const administrationItems = adminNav
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const drawerRef = useRef<HTMLElement>(null)
@@ -79,14 +79,14 @@ export function AdminSidebar() {
       aria-label="Abrir menú de administración"
       aria-expanded={mobileOpen}
       onClick={() => setMobileOpen(true)}
-      className="fixed left-4 top-3 z-50 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
+      className={cn(mobileMenuTrigger, 'fixed right-4 top-3 z-50 lg:hidden')}
     >
       <Menu className="h-6 w-6" />
     </button>
     {mobileOpen && typeof document !== 'undefined' ? createPortal(
       <div className="fixed inset-0 z-[100] bg-overlay backdrop-blur-[2px] dark:bg-black/75 lg:hidden">
         <button type="button" aria-label="Cerrar menú" className="absolute inset-0" onClick={() => setMobileOpen(false)} />
-        <aside ref={drawerRef} role="dialog" aria-modal="true" aria-label="Menú de administración" className="absolute inset-y-0 left-0 z-10 flex w-[min(20rem,88vw)] flex-col border-r border-border bg-drawer shadow-[var(--shadow-card)] dark:bg-surface">
+        <aside ref={drawerRef} role="dialog" aria-modal="true" aria-label="Menú de administración" className="absolute inset-y-0 right-0 z-10 flex w-[min(20rem,88vw)] flex-col border-l border-border bg-drawer shadow-[var(--shadow-card)] dark:bg-surface">
           <header className="flex min-h-16 items-center gap-3 border-b border-border px-4">
             <BrandMark className="h-10 w-10 shrink-0 rounded-lg" />
             <span className="min-w-0 flex-1">
@@ -99,7 +99,7 @@ export function AdminSidebar() {
           </header>
           <nav aria-label="Navegación de administración" className="flex flex-col gap-1 overflow-y-auto p-3">
             {administrationItems.map((item) => <MobileSidebarLink key={item.href} item={item} active={isNavItemActive(pathname, item.href)} onNavigate={() => setMobileOpen(false)} />)}
-            {workspaceItems.length > 0 ? <div className="mt-2 flex flex-col gap-1 border-t border-border pt-2" aria-label="Secciones de la subasta">
+            {workspaceItems.length > 0 ? <div className="flex flex-col gap-1" aria-label="Secciones de la subasta">
               {workspaceItems.map((item) => <MobileSidebarLink key={item.href} item={item} active={isNavItemActive(pathname, item.href)} onNavigate={() => setMobileOpen(false)} />)}
             </div> : null}
           </nav>

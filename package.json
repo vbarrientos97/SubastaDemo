@@ -5,9 +5,12 @@
   "packageManager": "pnpm@12.3.4",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "test": "node --experimental-strip-types --import ./scripts/register-alias.mjs --test lib/domain/domain.test.ts"
+    "test": "node --experimental-strip-types --import ./scripts/register-alias.mjs --test lib/domain/domain.test.ts lib/application/session.test.ts lib/session/local-storage.test.ts",
+    "typecheck": "tsc --noEmit --incremental false",
+    "check": "pnpm typecheck && pnpm test",
+    "build:turbo": "next build"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

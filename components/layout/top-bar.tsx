@@ -1,4 +1,7 @@
+'use client'
+
 import { BrandMark } from '@/components/layout/brand-mark'
+import { useSession } from '@/components/auth/session-provider'
 import { MainMenuDrawer } from '@/components/layout/main-menu-drawer'
 import { BackLink } from '@/components/layout/back-link'
 import { eyebrow } from '@/lib/styles'
@@ -19,6 +22,16 @@ export function TopBar({
   right?: React.ReactNode
   transparent?: boolean
 }) {
+  const { user } = useSession()
+  if (user?.role === 'buyer') {
+    if (!backHref) return <div aria-hidden="true" className="h-14 lg:hidden" />
+    return (
+      <nav aria-label="Navegación de regreso" className="flex min-h-14 items-center px-4 pr-20 pt-3 lg:hidden">
+        <BackLink href={backHref} historyBack={backHistory} />
+      </nav>
+    )
+  }
+
   return (
     <header
       className={cn(

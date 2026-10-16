@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useRef, useState } from 'react'
 import Image from 'next/image'
+import { useModalFocus } from '@/hooks/use-modal-focus'
 import { Play, ZoomIn, X } from 'lucide-react'
 import { youtubeId } from '@/lib/youtube'
 import { cn } from '@/lib/utils'
@@ -30,19 +31,8 @@ export function LiveGallery({
   const [zoom, setZoom] = useState(false)
   const currentPhoto = photos[photoIndex] ?? photos[0]
 
-  useEffect(() => {
-    if (!zoom) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') setZoom(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = previous
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [zoom])
+  const zoomRef = useRef<HTMLDivElement>(null)
+  useModalFocus(zoomRef, zoom, () => setZoom(false))
 
   const thumbs: { key: string; label: string; active: boolean; onClick: () => void; node: React.ReactNode }[] = [
     ...photos.map((photo, index) => ({
@@ -140,6 +130,8 @@ export function LiveGallery({
     {zoom && (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+        ref={zoomRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={title}

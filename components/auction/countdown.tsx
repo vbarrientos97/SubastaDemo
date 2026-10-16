@@ -22,7 +22,7 @@ export function Countdown({
   }, [seconds])
 
   return (
-    <span className={cn('tabular font-mono', className)} aria-live="polite">
+    <span className={cn('tabular font-mono', className)}>
       {formatDuration(remaining)}
     </span>
   )

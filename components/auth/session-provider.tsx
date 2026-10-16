@@ -82,25 +82,25 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SessionState | null>(null)
 
   useEffect(() => {
-    const refreshStatuses = (initial = false) => {
+    const refresh = () => {
       const loaded = openSession(repo)
       if (!loaded) return
       const auctions = refreshAuctionStatuses(loaded.auctions)
       const next = auctions === loaded.auctions ? loaded : { ...loaded, auctions }
       if (next !== loaded) repo.save(next)
-      if (initial) {
-        setState(next)
-      } else if (auctions !== loaded.auctions) {
-        setState((current) => current ? { ...current, auctions } : next)
-      }
+      setState((current) => JSON.stringify(current) === JSON.stringify(next) ? current : next)
     }
-    refreshStatuses(true)
-    const onFocus = () => refreshStatuses()
-    const intervalId = window.setInterval(onFocus, 30_000)
-    window.addEventListener('focus', onFocus)
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === 'subasta.session' || event.key === null) refresh()
+    }
+    refresh()
+    const intervalId = window.setInterval(refresh, 30_000)
+    window.addEventListener('focus', refresh)
+    window.addEventListener('storage', onStorage)
     return () => {
       window.clearInterval(intervalId)
-      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('storage', onStorage)
     }
   }, [repo])
 
@@ -108,16 +108,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const auctionId = state && account?.role === 'buyer'
     ? state.currentAuctionId ?? buyerHomeAuctionId(state.auctions, currentClient(state)?.id)
     : null
-  const visibleLots = state
+  const visibleLots = useMemo(() => state
     ? account?.role === 'buyer' && auctionId
       ? lotsOfAuction(state.lots, auctionId)
       : account?.role === 'buyer'
         ? []
       : state.lots
-    : []
-  const visibleState = state && account?.role === 'buyer'
+    : [], [state, account?.role, auctionId])
+  const visibleState = useMemo(() => state && account?.role === 'buyer'
     ? {
         ...state,
+        favoritesByAccount: state.currentUserId ? { [state.currentUserId]: state.favoriteLotIds } : {},
         accounts: state.accounts.filter((item) => item.id === state.currentUserId),
         clients: state.clients.filter((item) => item.id === currentClient(state)?.id),
         currentAuctionId: auctionId,
@@ -126,7 +127,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         favoriteLotIds: state.favoriteLotIds.filter((id) => visibleLots.some((lot) => lot.id === id)),
         events: state.events.filter((event) => !!event.lotId && visibleLots.some((lot) => lot.id === event.lotId)),
       }
-    : state
+    : state, [state, account?.role, auctionId, visibleLots])
 
   const api = useMemo<SessionApi>(
     () => ({

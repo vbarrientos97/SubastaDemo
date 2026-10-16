@@ -4,7 +4,7 @@ import { OPEN_AUCTION_ID, type Auction } from '@/lib/domain/auction'
 import type { AuctionEvent } from '@/lib/domain/event'
 import { demoLotBirthDate, LOT_COLORS, type Lot, type LotCategory } from '@/lib/domain/lot'
 import type { RegionId } from '@/lib/domain/region'
-import type { SessionState } from '@/lib/application/session-repository'
+import { SESSION_SCHEMA_VERSION, type SessionState } from '@/lib/application/session-repository'
 
 const buyers: { id: string; name: string; paddle: string; regionId: RegionId }[] = [
   { id: 'patrocinio', name: 'Patrocinio Romero', paddle: '11', regionId: 'boqueron' },
@@ -212,7 +212,7 @@ export function createSeed(): SessionState {
     favoriteLotIds: [],
     events: demoEvents(),
     pendingFavoriteLotId: null,
-    schemaVersion: 4,
+    schemaVersion: SESSION_SCHEMA_VERSION,
   }
 }
 

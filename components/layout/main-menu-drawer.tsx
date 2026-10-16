@@ -11,8 +11,9 @@ import { useDemoNotifications } from '@/components/notifications/use-demo-notifi
 import { unreadNotificationBadge } from '@/lib/application/notifications'
 import { BrandMark } from '@/components/layout/brand-mark'
 import { cn } from '@/lib/utils'
+import { mobileMenuTrigger } from '@/lib/styles'
 
-export function MainMenuDrawer() {
+export function MainMenuDrawer({ floating = false }: { floating?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const { ready, user, favoriteLotIds, buyerLots, signOut } = useSession()
@@ -100,7 +101,7 @@ export function MainMenuDrawer() {
     const start = touchStartRef.current
     const end = event.changedTouches[0]
     touchStartRef.current = null
-    if (start && start.x - end.clientX > 60 && Math.abs(start.y - end.clientY) < 80) closeMenu()
+    if (start && end.clientX - start.x > 60 && Math.abs(start.y - end.clientY) < 80) closeMenu()
   }
 
   const items = [
@@ -119,7 +120,7 @@ export function MainMenuDrawer() {
         aria-expanded={open}
         aria-controls="main-mobile-menu"
         onClick={() => setOpen(true)}
-        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className={cn(mobileMenuTrigger, floating && 'fixed right-4 top-3 z-50 lg:hidden')}
       >
         <span className="relative"><Menu className="h-6 w-6" />{notificationBadge ? <span aria-label={`${unreadCount} notificaciones sin leer`} className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">{notificationBadge}</span> : null}</span>
       </button>
@@ -136,7 +137,7 @@ export function MainMenuDrawer() {
             onClickCapture={handleMenuClick}
             onTouchStart={(event) => { touchStartRef.current = { x: event.touches[0].clientX, y: event.touches[0].clientY } }}
             onTouchEnd={handleTouchEnd}
-            className="absolute inset-y-0 left-0 z-10 flex w-[min(20rem,88vw)] flex-col border-r border-border bg-drawer shadow-[var(--shadow-card)] dark:bg-background dark:shadow-2xl"
+            className="absolute inset-y-0 right-0 z-10 flex w-[min(20rem,88vw)] flex-col border-l border-border bg-drawer shadow-[var(--shadow-card)] dark:bg-background dark:shadow-2xl"
           >
             <header className="flex min-h-16 items-center gap-3 border-b border-border px-4">
               <BrandMark className="h-9 w-9 rounded-lg" />

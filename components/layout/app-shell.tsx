@@ -8,6 +8,7 @@ import { DesktopSidebar } from '@/components/layout/desktop-sidebar'
 import { cn } from '@/lib/utils'
 import { LogicalBackGuard } from '@/components/layout/logical-back-guard'
 import { BuyerNotificationToasts } from '@/components/notifications/buyer-notification-toasts'
+import { MainMenuDrawer } from '@/components/layout/main-menu-drawer'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -31,6 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
     >
       <LogicalBackGuard />
+      {user?.role === 'buyer' && !bare ? <MainMenuDrawer floating /> : null}
       {ready && user?.role === 'buyer' ? <BuyerNotificationToasts /> : null}
       {isAdminRoute ? children : isAdminAccountRoute ? (
         <AdminShell>{children}</AdminShell>

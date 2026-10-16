@@ -9,7 +9,7 @@ import {
 } from '@/lib/favorites-view'
 
 export function useFavoritesView() {
-  const [view, setViewState] = useState<FavoritesView>('grid')
+  const [view, setViewState] = useState<FavoritesView>('columns')
   const [ready, setReady] = useState(false)
 
   useEffect(() => {

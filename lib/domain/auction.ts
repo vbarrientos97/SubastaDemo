@@ -151,6 +151,7 @@ export function validateAuction(input: AuctionInput) {
   if (!isAuctionStatus(input.status)) return 'Elige un estado.'
   if (input.startAt || input.endAt) {
     if (!input.startAt || !input.endAt) return 'Completa la fecha y hora de inicio y cierre.'
+    if (!Number.isFinite(Date.parse(input.startAt)) || !Number.isFinite(Date.parse(input.endAt))) return 'La fecha y hora no son válidas.'
     if (new Date(input.endAt) <= new Date(input.startAt)) return 'El cierre debe ser posterior al inicio.'
   }
   if (input.status !== 'creada') {

@@ -110,7 +110,7 @@ export function BidBox({
           </>
         )}
       </button>
-      {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm font-medium text-destructive">{error}</p> : null}
     </div>
   )
 }

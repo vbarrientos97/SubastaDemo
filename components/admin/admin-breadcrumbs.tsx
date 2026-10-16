@@ -8,8 +8,15 @@ import { BackLink } from '@/components/layout/back-link'
 export function AdminBreadcrumbs() {
   const pathname = usePathname()
   const { state } = useSession()
+  if (pathname === '/ajustes') {
+    return (
+      <nav aria-label="Navegación de regreso" className="mb-4 flex min-h-11 items-center pr-14 lg:pr-0">
+        <BackLink href="/admin">Volver a subastas</BackLink>
+      </nav>
+    )
+  }
   const match = pathname.match(/^\/admin\/subastas\/([^/]+)(?:\/(.*))?$/)
-  if (!match) return null
+  if (!match) return <div aria-hidden="true" className="mb-4 h-11 lg:hidden" />
 
   const [, auctionId, rest = ''] = match
   const auction = state?.auctions.find((item) => item.id === auctionId)
@@ -23,8 +30,8 @@ export function AdminBreadcrumbs() {
 
   return (
     <>
-      <div className="mb-4 lg:hidden">
-        <BackLink href={parentHref}>
+      <div className="mb-4 flex min-h-11 min-w-0 items-center pr-14 lg:hidden">
+        <BackLink href={parentHref} className="min-w-0 max-w-full [&>span]:truncate">
           {section === 'editar' ? 'Volver a subastas' : !section ? 'Volver a subastas' : `Volver a ${auction?.title ?? 'subasta'}`}
         </BackLink>
       </div>

@@ -49,11 +49,11 @@ export default function AuctionCatalogPage({ params }: { params: Promise<{ id: s
   )
   return (
     <>
-      <TopBar
-        title={user?.role === 'buyer' ? 'Inicio' : auction.title}
-        subtitle={user?.role === 'buyer' ? undefined : auctionStatusLabel(auction.status)}
-        backHref={user?.role === 'buyer' ? undefined : '/'}
-      />
+      {user?.role !== 'buyer' ? <TopBar
+        title={auction.title}
+        subtitle={auctionStatusLabel(auction.status)}
+        backHref="/"
+      /> : null}
       <main className="flex flex-col gap-4 px-4 py-4 lg:mx-auto lg:max-w-7xl lg:px-6 lg:py-6">
         {!user ? <div className="hidden lg:block"><BackLink href="/" /></div> : null}
         {user?.role === 'buyer' ? null : (
@@ -68,7 +68,7 @@ export default function AuctionCatalogPage({ params }: { params: Promise<{ id: s
           </div>
         )}
         <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando catálogo…</p>}>
-          <Catalog lots={lots} publicView={!user} />
+          <Catalog lots={lots} publicView={!user} buyerView={user?.role === 'buyer'} />
         </Suspense>
       </main>
     </>

@@ -11,7 +11,7 @@ export function AdminShell({
 }) {
   return (
     <AdminGuard>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-5 pt-16 lg:gap-6 lg:px-6 lg:py-8 lg:pl-24">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-5 pt-3 lg:gap-6 lg:px-6 lg:py-8 lg:pl-24">
         <AdminSidebar />
         <main className="min-w-0 flex-1">
           <AdminBreadcrumbs />

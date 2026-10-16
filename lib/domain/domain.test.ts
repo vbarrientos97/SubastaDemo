@@ -82,13 +82,13 @@ test('validateLot and validateAuction', () => {
   assert.equal(validateAuction({ title: 'Borrador', location: '', dates: '', status: 'creada' }), null)
   assert.equal(
     validateAuction({ title: 'Remate', location: 'David', dates: '', status: 'publicada' }),
-    'Escribe las fechas.',
+    'Completa la fecha y hora de inicio y cierre.',
   )
 })
 
 test('auction status actions expose the expected transitions', () => {
   assert.deepEqual(auctionStatusActions('creada').map((action) => action.status), ['publicada'])
-  assert.deepEqual(auctionStatusActions('publicada').map((action) => action.status), ['abierta'])
+  assert.deepEqual(auctionStatusActions('publicada').map((action) => action.status), [])
   assert.deepEqual(auctionStatusActions('abierta'), [])
   assert.deepEqual(auctionStatusActions('cerrada'), [])
 })

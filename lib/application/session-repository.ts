@@ -11,7 +11,9 @@ export type SessionState = {
   auctions: Auction[]
   lots: Lot[]
   clients: Client[]
+  /** Active account's projection; commands keep it in sync with favoritesByAccount. */
   favoriteLotIds: string[]
+  favoritesByAccount?: Record<string, string[]>
   events: AuctionEvent[]
   pendingFavoriteLotId?: string | null
   schemaVersion?: number
@@ -38,12 +40,12 @@ export type SessionRepository = {
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string }
 
-export const SESSION_SCHEMA_VERSION = 18
+export const SESSION_SCHEMA_VERSION = 19
 
 export function migrateSessionState(raw: StoredSession): SessionState {
   const legacy = raw.auction
   const auctions =
-    Array.isArray(raw.auctions) && raw.auctions.length > 0
+    Array.isArray(raw.auctions)
       ? raw.auctions
       : [
           {
@@ -62,8 +64,8 @@ export function migrateSessionState(raw: StoredSession): SessionState {
   const lots = (raw.lots ?? []).map((lot) => ({
     ...lot,
     auctionId: lot.auctionId || OPEN_AUCTION_ID,
-    color: normalizeLotColor(lot.color) ?? demoLotColor(lot.breed, lot.order),
-    birthDate: lot.birthDate || demoLotBirthDate(lot.order),
+    color: (raw.schemaVersion ?? 0) < 18 ? normalizeLotColor(lot.color) ?? demoLotColor(lot.breed, lot.order) : lot.color,
+    birthDate: (raw.schemaVersion ?? 0) < 18 ? lot.birthDate || demoLotBirthDate(lot.order) : lot.birthDate,
   }))
   const accounts = raw.accounts ?? []
   const currentUserId = raw.currentUserId ?? null
@@ -74,6 +76,8 @@ export function migrateSessionState(raw: StoredSession): SessionState {
     : currentAccount?.role === 'buyer'
       ? buyerHomeAuctionId(auctions, currentClientId)
       : null
+  const favoritesByAccount = { ...raw.favoritesByAccount }
+  if (!raw.favoritesByAccount && currentUserId) favoritesByAccount[currentUserId] = raw.favoriteLotIds ?? []
   return {
     accounts,
     currentUserId,
@@ -83,7 +87,8 @@ export function migrateSessionState(raw: StoredSession): SessionState {
     ),
     lots,
     clients: raw.clients ?? [],
-    favoriteLotIds: Array.isArray(raw.favoriteLotIds) ? raw.favoriteLotIds : [],
+    favoriteLotIds: currentUserId ? favoritesByAccount[currentUserId] ?? [] : [],
+    favoritesByAccount,
     events: Array.isArray(raw.events) ? raw.events : [],
     pendingFavoriteLotId: raw.pendingFavoriteLotId ?? null,
     schemaVersion: SESSION_SCHEMA_VERSION,
