@@ -37,15 +37,19 @@ export function SoldStamp({
         >
           Vendido
         </span>
-        <span className="h-px w-full bg-primary" />
-        <span
-          className={cn(
-            'font-bold uppercase tracking-[0.16em]',
-            lg ? 'text-sm tracking-[0.22em]' : sm ? 'text-[8px]' : 'text-[10px]',
-          )}
-        >
-          {paddle != null ? `Paleta #${paddle}` : 'Adjudicado'}
-        </span>
+        {paddle != null ? (
+          <>
+            <span className="h-px w-full bg-primary" />
+            <span
+              className={cn(
+                'font-bold uppercase tracking-[0.16em]',
+                lg ? 'text-sm tracking-[0.22em]' : sm ? 'text-[8px]' : 'text-[10px]',
+              )}
+            >
+              Paleta #{paddle}
+            </span>
+          </>
+        ) : null}
       </div>
     </div>
   )

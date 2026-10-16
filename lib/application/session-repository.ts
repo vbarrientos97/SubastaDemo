@@ -1,11 +1,13 @@
 import type { Account, Client } from '@/lib/domain/account'
 import { OPEN_AUCTION_ID, type Auction } from '@/lib/domain/auction'
+import { buyerHomeAuctionId } from '@/lib/domain/auction'
 import type { AuctionEvent } from '@/lib/domain/event'
-import type { Lot } from '@/lib/domain/lot'
+import { demoLotBirthDate, demoLotColor, normalizeLotColor, type Lot } from '@/lib/domain/lot'
 
 export type SessionState = {
   accounts: Account[]
   currentUserId: string | null
+  currentAuctionId?: string | null
   auctions: Auction[]
   lots: Lot[]
   clients: Client[]
@@ -36,7 +38,7 @@ export type SessionRepository = {
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string }
 
-export const SESSION_SCHEMA_VERSION = 12
+export const SESSION_SCHEMA_VERSION = 18
 
 export function migrateSessionState(raw: StoredSession): SessionState {
   const legacy = raw.auction
@@ -60,10 +62,22 @@ export function migrateSessionState(raw: StoredSession): SessionState {
   const lots = (raw.lots ?? []).map((lot) => ({
     ...lot,
     auctionId: lot.auctionId || OPEN_AUCTION_ID,
+    color: normalizeLotColor(lot.color) ?? demoLotColor(lot.breed, lot.order),
+    birthDate: lot.birthDate || demoLotBirthDate(lot.order),
   }))
+  const accounts = raw.accounts ?? []
+  const currentUserId = raw.currentUserId ?? null
+  const currentAccount = accounts.find((account) => account.id === currentUserId)
+  const currentClientId = currentAccount?.clientId ?? null
+  const currentAuctionId = raw.currentAuctionId && auctions.some((auction) => auction.id === raw.currentAuctionId)
+    ? raw.currentAuctionId
+    : currentAccount?.role === 'buyer'
+      ? buyerHomeAuctionId(auctions, currentClientId)
+      : null
   return {
-    accounts: raw.accounts ?? [],
-    currentUserId: raw.currentUserId ?? null,
+    accounts,
+    currentUserId,
+    currentAuctionId,
     auctions: auctions.map((auction) =>
       String(auction.status) === 'incompleta' ? { ...auction, status: 'creada' as const } : auction,
     ),

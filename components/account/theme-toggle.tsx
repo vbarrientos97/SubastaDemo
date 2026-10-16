@@ -39,7 +39,7 @@ export function ThemeToggle({
       <div
         className={cn(
           'inline-flex items-center rounded-full border p-0.5 shadow-sm backdrop-blur-md',
-          'border-[#0c3d28]/15 bg-[#f7f1e4]/85',
+          'border-border bg-surface/85',
           'dark:border-white/15 dark:bg-black/45',
           className,
         )}
@@ -53,7 +53,7 @@ export function ThemeToggle({
           onClick={() => setTheme(false)}
           className={cn(
             'inline-flex h-7 w-7 items-center justify-center rounded-full transition',
-            !dark ? 'bg-[#0c3d28] text-white' : 'text-[#0c3d28]/55 hover:text-[#0c3d28] dark:text-white/55 dark:hover:text-white',
+            !dark ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground dark:text-white/55 dark:hover:text-white',
           )}
         >
           <Sun className="h-3.5 w-3.5" />
@@ -65,7 +65,7 @@ export function ThemeToggle({
           onClick={() => setTheme(true)}
           className={cn(
             'inline-flex h-7 w-7 items-center justify-center rounded-full transition',
-            dark ? 'bg-white/15 text-white' : 'text-[#0c3d28]/55 hover:text-[#0c3d28]',
+            dark ? 'bg-white/15 text-white' : 'text-muted-foreground hover:text-foreground',
           )}
         >
           <Moon className="h-3.5 w-3.5" />
@@ -82,9 +82,9 @@ export function ThemeToggle({
           aria-pressed={!dark}
           onClick={() => setTheme(false)}
           className={cn(
-            'inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold transition',
+            'inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold transition',
             !dark
-              ? 'bg-black text-white shadow-sm'
+              ? 'bg-primary text-primary-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
@@ -96,7 +96,7 @@ export function ThemeToggle({
           aria-pressed={dark}
           onClick={() => setTheme(true)}
           className={cn(
-            'inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold transition',
+            'inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold transition',
             dark
               ? 'bg-surface text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',

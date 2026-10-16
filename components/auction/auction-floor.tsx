@@ -35,7 +35,7 @@ export function AuctionFloor({ lots }: { lots: Lot[] }) {
         })}
       </ul>
 
-      <LotCard key={selected.id} lot={selected} compact />
+      <LotCard key={selected.id} lot={selected} compact returnTo="/favoritos" />
       <CompetitionPanel lot={selected} />
     </div>
   )

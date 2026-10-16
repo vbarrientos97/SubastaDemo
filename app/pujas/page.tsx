@@ -9,11 +9,12 @@ import { BidGate } from '@/components/auction/bid-gate'
 import { Countdown } from '@/components/auction/countdown'
 import { buyerBidSections, buyerLotBorderTone, type BuyerBidSections } from '@/lib/domain/buyer-bids'
 import type { Client } from '@/lib/domain/account'
-import { isActiveLot, statusLabel, type Lot } from '@/lib/domain/lot'
+import { formatLotBirthDate, isActiveLot, statusLabel, type Lot } from '@/lib/domain/lot'
 import { formatUSD } from '@/lib/format'
 import { eyebrow, panel } from '@/lib/styles'
 import { cn } from '@/lib/utils'
 import { TopBar } from '@/components/layout/top-bar'
+import { BackLink } from '@/components/layout/back-link'
 
 type SectionKey = keyof BuyerBidSections
 
@@ -28,16 +29,16 @@ const sectionInfo: Record<SectionKey, { title: string; empty: string; icon: type
     title: 'En seguimiento',
     empty: 'Guarda como favorito los lotes que quieras seguir.',
     icon: Heart,
-    tone: 'text-amber-500',
+    tone: 'text-warning dark:text-amber-500',
   },
   won: {
     title: 'Ganados',
     empty: 'Los lotes que ganes aparecerán aquí.',
     icon: Check,
-    tone: 'text-emerald-500',
+    tone: 'text-success dark:text-emerald-500',
   },
   finished: {
-    title: 'Finalizados',
+    title: 'Perdidos',
     empty: 'Los lotes cerrados en los que participaste aparecerán aquí.',
     icon: History,
     tone: 'text-muted-foreground',
@@ -45,32 +46,31 @@ const sectionInfo: Record<SectionKey, { title: string; empty: string; icon: type
 }
 
 function PujasContent() {
-  const { state, client, favoriteLotIds } = useSession()
+  const { state, client, favoriteLotIds, buyerLots, auctionId } = useSession()
   const [selectedLotId, setSelectedLotId] = useState<string | null>(null)
 
   if (!state || !client) {
     return (
       <>
-        <TopBar title="Pujas" subtitle="Tu actividad en el remate" />
-        <p className="px-4 py-6 text-sm text-muted-foreground">No encontramos un cliente asociado a esta cuenta.</p>
+        <TopBar title="Pujas" subtitle="Tu actividad en el remate" backHref="/" />
+        <div className="px-4 py-6 lg:mx-auto lg:max-w-7xl lg:px-6"><div className="mb-3 hidden lg:block"><BackLink href="/" /></div><p className="text-sm text-muted-foreground">No encontramos un cliente asociado a esta cuenta.</p></div>
       </>
     )
   }
 
-  const associatedAuctionIds = state.auctions
-    .filter((auction) => auction.clientIds.includes(client.id))
-    .map((auction) => auction.id)
-  const sections = buyerBidSections(state.lots, client, associatedAuctionIds, favoriteLotIds)
+  const sections = buyerBidSections(buyerLots, client, auctionId ? [auctionId] : [], favoriteLotIds)
   const priorityLots = [...sections.active, ...sections.following, ...sections.won, ...sections.finished]
-  const selectedLot = priorityLots.find((lot) => lot.id === selectedLotId) ?? priorityLots[0] ?? null
+  const rawSelectedLot = priorityLots.find((lot) => lot.id === selectedLotId) ?? priorityLots[0] ?? null
+  const selectedLot = rawSelectedLot ? buyerLots.find((lot) => lot.id === rawSelectedLot.id) ?? rawSelectedLot : null
   const selectedSection = selectedLot
     ? (Object.keys(sections) as SectionKey[]).find((key) => sections[key].some((lot) => lot.id === selectedLot.id)) ?? null
     : null
 
   return (
     <>
-      <TopBar title="Pujas" subtitle="Tu actividad en el remate" />
+      <TopBar title="Pujas" subtitle="Tu actividad en el remate" backHref="/" />
       <main className="flex flex-col gap-5 px-4 py-4 lg:mx-auto lg:max-w-7xl lg:px-6 lg:py-6">
+        <div className="hidden lg:block"><BackLink href="/" /></div>
         <header>
           <h1 className="font-display text-xl font-bold text-foreground sm:text-2xl">Mis pujas</h1>
           <p className="mt-1 text-sm text-muted-foreground">Sigue tus pujas, los lotes guardados y tus resultados.</p>
@@ -95,7 +95,7 @@ function PujasContent() {
               <SelectedLotPanel lot={selectedLot} sectionKey={selectedSection ?? 'active'} />
             ) : (
               <section className={cn(panel, 'flex min-h-72 flex-col items-center justify-center p-6 text-center')}>
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Gavel className="h-5 w-5" /></span>
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive-soft text-destructive dark:bg-primary/10 dark:text-primary"><Gavel className="h-5 w-5" /></span>
                 <h2 className="mt-4 font-display text-lg font-bold text-foreground">Tu actividad aparecerá aquí</h2>
                 <p className="mt-1 max-w-xs text-sm text-muted-foreground">Al pujar o guardar un lote asociado, podrás consultar sus detalles desde esta página.</p>
               </section>
@@ -186,13 +186,13 @@ function BidLotRow({
           : borderTone === 'orange'
             ? 'Vas perdiendo'
             : 'Por cerrar'
-        : statusLabel(lot.status)
+        : lot.status === 'upcoming' ? 'Sin abrir' : statusLabel(lot.status)
   const badgeClass = borderTone === 'green'
-    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+    ? 'bg-success-soft text-success dark:bg-emerald-500/10 dark:text-emerald-300'
     : borderTone === 'orange'
-      ? 'bg-orange-500/10 text-orange-700 dark:text-orange-300'
+      ? 'bg-warning-soft text-warning dark:bg-orange-500/10 dark:text-orange-300'
       : borderTone === 'red'
-        ? 'bg-red-500/10 text-red-700 dark:text-red-300'
+        ? 'bg-destructive-soft text-destructive dark:bg-red-500/10 dark:text-red-300'
         : 'bg-surface-2 text-muted-foreground'
   const priceLabel = lot.status === 'closed' ? 'Precio final' : 'Precio actual'
 
@@ -210,7 +210,9 @@ function BidLotRow({
           </span>
           <span className={cn(eyebrow, 'text-muted-foreground')}>Lote {String(lot.order).padStart(2, '0')}</span>
         </span>
-        <span className="mt-1 block truncate font-display text-sm font-bold text-foreground sm:text-base">{lot.breed}</span>
+        <span className="mt-1 block truncate font-display text-sm font-bold text-foreground sm:text-base">Raza: {lot.breed}</span>
+        <span className="block truncate text-sm font-semibold text-foreground">Color: {lot.color ?? '—'}</span>
+        <span className="block truncate text-xs text-muted-foreground">Nacimiento: {formatLotBirthDate(lot.birthDate)} · {lot.weightKg.toLocaleString('es-CR')} kg</span>
         <span className="mt-0.5 block truncate text-xs text-muted-foreground">{[lot.registeredName, lot.seller].filter(Boolean).join(' · ') || lot.category}</span>
       </span>
       <span className="shrink-0 text-right">
@@ -224,7 +226,7 @@ function BidLotRow({
   return (
     <>
       <Link
-        href={`/lote/${lot.id}`}
+        href={`/lote/${lot.id}?returnTo=%2Fpujas`}
         className={cn('flex min-h-[5.75rem] items-center gap-3 rounded-2xl border-2 p-3 transition hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-4 lg:hidden', borderClass)}
       >
         {content}
@@ -260,8 +262,12 @@ function SelectedLotPanel({ lot, sectionKey }: { lot: Lot; sectionKey: SectionKe
           </span>
         </div>
         <p className={cn(eyebrow, 'mt-4 text-primary')}>{auction?.title ?? 'Subasta asociada'}</p>
-        <h2 className="mt-1 break-words font-display text-xl font-bold leading-tight text-foreground">{lot.breed}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Lote {String(lot.order).padStart(2, '0')} · {lot.registeredName || lot.category}</p>
+        <p className="mt-1 text-sm font-semibold text-muted-foreground">Lote {String(lot.order).padStart(2, '0')}</p>
+        <h2 className="break-words font-display text-xl font-bold leading-tight text-foreground">Raza: {lot.breed}</h2>
+        <p className="font-semibold text-foreground">Color: {lot.color ?? '—'}</p>
+        <p className="text-sm text-muted-foreground">Nacimiento: {formatLotBirthDate(lot.birthDate)} · {lot.weightKg.toLocaleString('es-CR')} kg</p>
+        <p className="text-sm text-muted-foreground">Padre: {lot.sire ?? '—'} · Madre: {lot.dam ?? '—'}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{lot.registeredName || lot.category}</p>
 
         <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-surface-2 p-3">
           <div>
@@ -283,11 +289,11 @@ function SelectedLotPanel({ lot, sectionKey }: { lot: Lot; sectionKey: SectionKe
           </div>
         ) : (
           <div className="mt-4 rounded-2xl border border-border bg-background/40 p-3 text-sm text-muted-foreground">
-            {won ? `Ganaste este lote${lot.soldToPaddle ? ` con la paleta #${lot.soldToPaddle}` : ''}.` : lot.status === 'closed' ? `Lote adjudicado a la paleta #${lot.soldToPaddle ?? '—'}.` : lot.opensAtLabel ?? 'Este lote todavía no está abierto a pujas.'}
+            {won ? 'Ganado por ti.' : lot.status === 'closed' ? 'Vendido.' : lot.opensAtLabel ?? 'Este lote todavía no está abierto a pujas.'}
           </div>
         )}
       </div>
-      <Link href={`/lote/${lot.id}`} className="flex min-h-11 items-center justify-center gap-2 border-t border-border px-4 text-sm font-semibold text-primary transition hover:bg-accent">
+      <Link href={`/lote/${lot.id}?returnTo=%2Fpujas`} className="flex min-h-11 items-center justify-center gap-2 border-t border-border px-4 text-sm font-semibold text-primary transition hover:bg-accent">
         Ver detalle del lote
         <ArrowUpRight className="h-4 w-4" />
       </Link>

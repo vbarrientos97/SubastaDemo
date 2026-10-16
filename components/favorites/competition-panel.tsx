@@ -1,15 +1,15 @@
 'use client'
 
-import { Heart, Users } from 'lucide-react'
+import { Users } from 'lucide-react'
 import type { Lot } from '@/lib/domain/lot'
-import { competingBidders, followerCount, isActiveLot } from '@/lib/domain/lot'
+import { competingBidders, isActiveLot } from '@/lib/domain/lot'
 import { formatUSD } from '@/lib/format'
 import { eyebrow, panel } from '@/lib/styles'
 import { cn } from '@/lib/utils'
 
 export function CompetitionPanel({ lot }: { lot: Lot }) {
   if (isActiveLot(lot)) return <ActiveRace lot={lot} />
-  if (lot.status === 'upcoming') return <UpcomingInterest lot={lot} />
+  if (lot.status === 'upcoming') return null
   return <ClosedRace lot={lot} />
 }
 
@@ -68,24 +68,6 @@ function ActiveRace({ lot }: { lot: Lot }) {
   )
 }
 
-function UpcomingInterest({ lot }: { lot: Lot }) {
-  const saved = followerCount(lot)
-
-  return (
-    <aside className={cn(panel, 'sticky top-24 flex flex-col gap-4 p-4')}>
-      <div>
-        <p className={cn(eyebrow, 'text-warning')}>Próxima subasta</p>
-        <h3 className="mt-1 font-display text-lg font-bold text-foreground">Todavía no abre</h3>
-        <p className="mt-2 text-sm text-muted-foreground">{lot.opensAtLabel ?? 'Fecha por confirmar'}</p>
-      </div>
-      <p className="flex items-center gap-2 rounded-2xl bg-background/40 px-3 py-3 text-sm text-muted-foreground">
-        <Heart className="h-4 w-4 shrink-0 text-primary" />
-        {saved} personas lo guardaron como favorito
-      </p>
-    </aside>
-  )
-}
-
 function ClosedRace({ lot }: { lot: Lot }) {
   return (
     <aside className={cn(panel, 'sticky top-24 flex flex-col gap-3 p-4')}>
@@ -94,7 +76,7 @@ function ClosedRace({ lot }: { lot: Lot }) {
         <h3 className="mt-1 font-display text-lg font-bold text-foreground">Ya se adjudicó</h3>
       </div>
       <p className="text-sm text-muted-foreground">
-        Paleta #{lot.soldToPaddle ?? '—'} se llevó el lote en{' '}
+        {lot.buyerOutcome === 'won' ? 'Ganado por ti en ' : 'Vendido en '}
         <span className="font-semibold text-success">${formatUSD(lot.finalPrice ?? lot.currentBid)}</span>.
       </p>
     </aside>

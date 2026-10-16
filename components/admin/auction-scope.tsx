@@ -1,9 +1,10 @@
 'use client'
 
-import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { useSession } from '@/components/auth/session-provider'
 import type { Auction } from '@/lib/domain/auction'
+import { BackLink } from '@/components/layout/back-link'
+import { usePathname } from 'next/navigation'
 
 export function AuctionScope({
   id,
@@ -12,17 +13,19 @@ export function AuctionScope({
   id: string
   children: (auction: Auction) => ReactNode
 }) {
+  const pathname = usePathname()
   const { state } = useSession()
-  if (!state) return <p className="text-sm text-muted-foreground">Cargando…</p>
+  const parentHref = pathname.endsWith('/editar') || /^\/admin\/subastas\/[^/]+$/.test(pathname)
+    ? '/admin'
+    : `/admin/subastas/${id}`
+  if (!state) return <div className="flex flex-col items-start gap-3"><p className="text-sm text-muted-foreground">Cargando…</p><BackLink href={parentHref} /></div>
   const auction = state.auctions.find((item) => item.id === id) ?? null
   if (!auction) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Esa subasta ya no está.{' '}
-        <Link href="/admin" className="font-semibold text-primary">
-          Volver al listado
-        </Link>
-      </p>
+      <div className="flex flex-col items-start gap-3">
+        <p className="text-sm text-muted-foreground">Esa subasta ya no está.</p>
+        <BackLink href="/admin">Volver al listado</BackLink>
+      </div>
     )
   }
   return children(auction)

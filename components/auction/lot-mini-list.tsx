@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import type { Lot } from '@/lib/domain/lot'
-import { displayedPrice, isActiveLot } from '@/lib/domain/lot'
+import { displayedPrice, formatLotBirthDate, isActiveLot } from '@/lib/domain/lot'
 import { formatUSD } from '@/lib/format'
 import { caption } from '@/lib/styles'
 import { cn } from '@/lib/utils'
@@ -11,11 +11,13 @@ import { LotCard } from '@/components/auction/lot-card'
 
 export function LotMiniRow({
   lot,
+  publicView = false,
   selected,
   expanded,
   onSelect,
 }: {
   lot: Lot
+  publicView?: boolean
   selected?: boolean
   expanded?: boolean
   onSelect: () => void
@@ -47,14 +49,16 @@ export function LotMiniRow({
           Lote {String(lot.order).padStart(2, '0')}
         </span>
         <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">
-          {lot.sire ? <span className="block truncate">Padre {lot.sire}</span> : null}
-          {lot.dam ? <span className="block truncate">Madre {lot.dam}</span> : null}
-          {!lot.sire && !lot.dam ? <span className="block truncate">{lot.breed}</span> : null}
+          <span className="block truncate">Raza: {lot.breed || '—'}</span>
+          <span className="block truncate">Color: {lot.color ?? '—'}</span>
+          <span className="block truncate">Nacimiento: {formatLotBirthDate(lot.birthDate)} · {lot.weightKg.toLocaleString('es-CR')} kg</span>
+          <span className="block truncate">Padre: {lot.sire ?? '—'}</span>
+          <span className="block truncate">Madre: {lot.dam ?? '—'}</span>
         </span>
       </span>
-      <span className="w-16 shrink-0 text-right">
+      {!publicView ? <span className="w-16 shrink-0 text-right">
         {upcoming ? (
-          <span className={cn(caption, 'text-warning')}>Pronto</span>
+          <span className={cn(caption, 'text-warning')}>Sin abrir</span>
         ) : (
           <>
             <span className="block text-sm font-bold tabular text-foreground">
@@ -72,12 +76,12 @@ export function LotMiniRow({
             )}
           </>
         )}
-      </span>
+      </span> : null}
     </button>
   )
 }
 
-export function LotMobileList({ lots }: { lots: Lot[] }) {
+export function LotMobileList({ lots, publicView = false, returnTo }: { lots: Lot[]; publicView?: boolean; returnTo?: string }) {
   const [openId, setOpenId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -97,13 +101,14 @@ export function LotMobileList({ lots }: { lots: Lot[] }) {
           <li key={lot.id} className="flex flex-col gap-2">
             <LotMiniRow
               lot={lot}
+              publicView={publicView}
               selected={open}
               expanded={open}
               onSelect={() => setOpenId((current) => (current === lot.id ? null : lot.id))}
             />
             {open ? (
               <div id={`lot-expand-${lot.id}`} className="scroll-mt-16">
-                <LotCard lot={lot} />
+                <LotCard lot={lot} publicView={publicView} returnTo={returnTo ?? `/subasta/${lot.auctionId}`} />
               </div>
             ) : null}
           </li>

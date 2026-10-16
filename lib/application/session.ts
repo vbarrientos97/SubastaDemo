@@ -10,7 +10,9 @@ import {
 import {
   bidAccess,
   bidDenialMessage,
+  buyerHomeAuctionId,
   isAuctionStatus,
+  auctionStatusAtTime,
   validateAuctionTransition,
   validateAuction,
   type Auction,
@@ -23,7 +25,7 @@ import {
   type EventTypeId,
 } from '@/lib/domain/event'
 import { addFavoriteId, pruneFavoriteIds, toggleFavoriteId } from '@/lib/domain/favorites'
-import { lotImages, validateLot, type LotInput } from '@/lib/domain/lot'
+import { lotImages, normalizeLotColor, validateLot, type LotInput } from '@/lib/domain/lot'
 import { isRegionId } from '@/lib/domain/region'
 import type { Result, SessionRepository, SessionState } from '@/lib/application/session-repository'
 
@@ -88,11 +90,18 @@ export function currentClient(state: SessionState) {
 export function signIn(
   repo: SessionRepository,
   input: { login: string; password: string },
+  auctionId?: string | null,
 ): Result<SessionState> {
   return mutateSession(repo, (state) => {
     const account = matchAccount(state.accounts, input.login, input.password)
     if (!account) return { ok: false, error: 'Usuario o contraseña incorrectos.' }
-    return { ok: true, value: { ...state, currentUserId: account.id } }
+    const requestedAuction = auctionId ? state.auctions.find((auction) => auction.id === auctionId) : null
+    const currentAuctionId = account.role === 'buyer'
+      ? requestedAuction && requestedAuction.status !== 'creada'
+        ? requestedAuction.id
+        : buyerHomeAuctionId(state.auctions, account.clientId)
+      : null
+    return { ok: true, value: { ...state, currentUserId: account.id, currentAuctionId } }
   })
 }
 
@@ -122,6 +131,7 @@ export function registerBuyer(repo: SessionRepository, input: RegisterInput): Re
         clients: [...state.clients, client],
         accounts: [...state.accounts, account],
         currentUserId: account.id,
+        currentAuctionId: buyerHomeAuctionId(state.auctions, client.id),
       },
     }
   })
@@ -130,7 +140,7 @@ export function registerBuyer(repo: SessionRepository, input: RegisterInput): Re
 export function signOut(repo: SessionRepository): SessionState | null {
   const result = mutateSession(repo, (state) => ({
     ok: true,
-    value: { ...state, currentUserId: null },
+    value: { ...state, currentUserId: null, currentAuctionId: null },
   }))
   return result.ok ? result.value : null
 }
@@ -151,6 +161,7 @@ function auctionFromInput(id: string, input: AuctionInput, current?: Auction): A
     dates,
     startAt: input.startAt || current?.startAt,
     endAt: input.endAt || current?.endAt,
+    closedAt: current?.closedAt,
     totalLots: current?.totalLots ?? 0,
     connected: current?.connected ?? 0,
     clientIds: current?.clientIds ?? [],
@@ -174,11 +185,14 @@ function readAuction(input: AuctionInput) {
 
 export function createAuction(repo: SessionRepository, input: AuctionInput): Result<SessionState> {
   return mutateSession(repo, (state) => {
+    if (input.status !== 'creada') return { ok: false, error: 'Una subasta nueva siempre empieza como creada.' }
     const parsed = readAuction(input)
     if (!parsed.ok) return parsed
     const transitionError = validateAuctionTransition(null, parsed.input.status)
     if (transitionError) return { ok: false, error: transitionError }
     const auction = auctionFromInput(nextId('subasta'), parsed.input)
+    auction.status = auctionStatusAtTime(auction)
+    if (auction.status === 'cerrada') auction.closedAt = auction.endAt
     return { ok: true, value: { ...state, auctions: [...state.auctions, auction] } }
   })
 }
@@ -191,16 +205,38 @@ export function updateAuction(
   return mutateSession(repo, (state) => {
     const current = state.auctions.find((auction) => auction.id === id)
     if (!current) return { ok: false, error: 'Esa subasta ya no está.' }
-    const parsed = readAuction(input)
+    const now = new Date()
+    const currentStatus = auctionStatusAtTime(current, now)
+    const datesChanged = (input.startAt ?? '') !== (current.startAt ?? '') || (input.endAt ?? '') !== (current.endAt ?? '')
+    if (current.status === 'creada' && currentStatus === 'cerrada' && input.status === 'publicada') {
+      return { ok: false, error: 'La ventana de esta subasta ya terminó. Edita las fechas para publicarla.' }
+    }
+    if (currentStatus === 'cerrada' && datesChanged) {
+      return { ok: false, error: 'No se pueden cambiar las fechas de una subasta cerrada.' }
+    }
+    if (currentStatus !== 'creada' && currentStatus !== 'cerrada' && datesChanged && input.endAt && new Date(input.endAt).getTime() <= now.getTime()) {
+      return { ok: false, error: 'La fecha y hora de cierre debe ser posterior a la hora actual.' }
+    }
+    const nextInput: AuctionInput = currentStatus === 'cerrada'
+      ? { ...input, status: 'cerrada' }
+      : currentStatus === 'creada'
+        ? input
+        : { ...input, status: 'publicada' }
+    const parsed = readAuction(nextInput)
     if (!parsed.ok) return parsed
-    const transitionError = validateAuctionTransition(current.status, parsed.input.status)
+    const transitionError = currentStatus === 'creada'
+      ? validateAuctionTransition('creada', parsed.input.status)
+      : null
     if (transitionError) return { ok: false, error: transitionError }
+    const updated = auctionFromInput(id, parsed.input, current)
+    updated.status = currentStatus === 'cerrada' ? 'cerrada' : auctionStatusAtTime(updated, now)
+    if (updated.status === 'cerrada') updated.closedAt = current.closedAt ?? updated.endAt ?? now.toISOString()
     return {
       ok: true,
       value: {
         ...state,
         auctions: state.auctions.map((auction) =>
-          auction.id === id ? auctionFromInput(id, parsed.input, current) : auction,
+          auction.id === id ? updated : auction,
         ),
       },
     }
@@ -268,7 +304,8 @@ function lotDetails(input: LotInput) {
   const images = lotImages(input)
   return {
     seller: input.seller.trim() || undefined,
-    color: input.color.trim() || undefined,
+    color: normalizeLotColor(input.color),
+    birthDate: input.birthDate || undefined,
     sire: input.sire.trim() || undefined,
     dam: input.dam.trim() || undefined,
     youtubeUrl: input.youtubeUrl.trim() || undefined,
@@ -461,10 +498,16 @@ export function placeBid(repo: SessionRepository, lotId: string, amount: number)
   return mutateSession(repo, (state) => {
     const lot = state.lots.find((item) => item.id === lotId)
     if (!lot) return { ok: false, error: 'Ese lote ya no está.' }
+    if (state.currentAuctionId && lot.auctionId !== state.currentAuctionId) {
+      return { ok: false, error: 'Ese lote no pertenece a tu subasta.' }
+    }
     const auction = state.auctions.find((item) => item.id === lot.auctionId) ?? null
     const account = currentAccount(state)
     const client = currentClient(state)
-    const access = bidAccess(auction, account, client)
+    const currentAuction = auction
+      ? { ...auction, status: auctionStatusAtTime(auction) }
+      : null
+    const access = bidAccess(currentAuction, account, client)
     if (!access.ok) return { ok: false, error: bidDenialMessage(access.reason) }
     if (!Number.isFinite(amount) || amount <= lot.currentBid) {
       return { ok: false, error: 'La puja debe superar la oferta actual.' }
@@ -504,6 +547,9 @@ export function toggleFavorite(repo: SessionRepository, lotId: string): Result<S
     if (!state.lots.some((lot) => lot.id === lotId)) {
       return { ok: false, error: 'Ese lote ya no está.' }
     }
+    if (state.currentAuctionId && state.lots.find((lot) => lot.id === lotId)?.auctionId !== state.currentAuctionId) {
+      return { ok: false, error: 'Ese lote no pertenece a tu subasta.' }
+    }
     return {
       ok: true,
       value: { ...state, favoriteLotIds: toggleFavoriteId(state.favoriteLotIds, lotId) },
@@ -524,7 +570,7 @@ export function consumePendingFavorite(repo: SessionRepository): Result<SessionS
     if (!lotId || !state.currentUserId) {
       return { ok: true, value: { ...state, pendingFavoriteLotId: null } }
     }
-    const exists = state.lots.some((lot) => lot.id === lotId)
+    const exists = state.lots.some((lot) => lot.id === lotId && (!state.currentAuctionId || lot.auctionId === state.currentAuctionId))
     return {
       ok: true,
       value: {

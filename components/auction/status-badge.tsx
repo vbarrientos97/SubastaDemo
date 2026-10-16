@@ -29,7 +29,7 @@ const config: Record<
     icon: Lock,
   },
   upcoming: {
-    label: 'Próximamente',
+    label: 'Sin abrir',
     className: 'bg-black/55 text-amber-300 ring-1 ring-amber-300/40 backdrop-blur-sm',
     icon: CalendarClock,
   },

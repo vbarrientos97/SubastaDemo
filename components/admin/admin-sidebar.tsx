@@ -3,32 +3,26 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, Menu, X } from 'lucide-react'
-import { useSession } from '@/components/auth/session-provider'
-import { auctionStatusColor, auctionStatusLabel } from '@/lib/domain/auction'
 import { BrandMark } from '@/components/layout/brand-mark'
 import { adminNav, auctionWorkspaceNav, isNavItemActive, type NavItem } from '@/lib/navigation'
 import { panel } from '@/lib/styles'
 import { cn } from '@/lib/utils'
+import { AccountDrawerSection } from '@/components/account/profile-menu'
 
-export function AdminSidebar({ showMobileMenu = false }: { showMobileMenu?: boolean }) {
+export function AdminSidebar() {
   const pathname = usePathname()
-  const { state } = useSession()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const sidebarRef = useRef<HTMLElement>(null)
-
-  useEffect(() => setMobileOpen(false), [pathname])
 
   useEffect(() => {
     if (collapsed && !mobileOpen) return
 
     function handleOutsideClick(event: PointerEvent) {
-      if (sidebarRef.current?.contains(event.target as Node)) return
-      if (window.innerWidth < 1024) {
-        setMobileOpen(false)
-        return
-      }
+      if (sidebarRef.current?.contains(event.target as Node) || triggerRef.current?.contains(event.target as Node)) return
+      if (window.innerWidth < 1024) return
       if (!collapsed) setCollapsed(true)
     }
 
@@ -38,56 +32,87 @@ export function AdminSidebar({ showMobileMenu = false }: { showMobileMenu?: bool
 
   const match = pathname.match(/^\/admin\/subastas\/([^/]+)/)
   const auctionId = match?.[1]
-  const auction = state?.auctions.find((item) => item.id === auctionId)
   const workspaceItems = auctionId ? auctionWorkspaceNav(auctionId) : []
-  const mobileMenuVisible = Boolean(auctionId) || showMobileMenu
+  const administrationItems = auctionId ? [] : adminNav
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const drawerRef = useRef<HTMLElement>(null)
+
+  useEffect(() => setMobileOpen(false), [pathname])
+
+  useEffect(() => {
+    if (!mobileOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeButtonRef.current?.focus()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileOpen(false)
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = drawerRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')
+      if (!focusable?.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = previousOverflow
+      triggerRef.current?.focus()
+    }
+  }, [mobileOpen])
 
   return (
+    <>
+    <button
+      ref={triggerRef}
+      type="button"
+      aria-label="Abrir menú de administración"
+      aria-expanded={mobileOpen}
+      onClick={() => setMobileOpen(true)}
+      className="fixed left-4 top-3 z-50 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
+    >
+      <Menu className="h-6 w-6" />
+    </button>
+    {mobileOpen && typeof document !== 'undefined' ? createPortal(
+      <div className="fixed inset-0 z-[100] bg-overlay backdrop-blur-[2px] dark:bg-black/75 lg:hidden">
+        <button type="button" aria-label="Cerrar menú" className="absolute inset-0" onClick={() => setMobileOpen(false)} />
+        <aside ref={drawerRef} role="dialog" aria-modal="true" aria-label="Menú de administración" className="absolute inset-y-0 left-0 z-10 flex w-[min(20rem,88vw)] flex-col border-r border-border bg-drawer shadow-[var(--shadow-card)] dark:bg-surface">
+          <header className="flex min-h-16 items-center gap-3 border-b border-border px-4">
+            <BrandMark className="h-10 w-10 shrink-0 rounded-lg" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-bold text-foreground">Administración</span>
+              <span className="block truncate text-xs text-muted-foreground">Subastas ganaderas</span>
+            </span>
+            <button ref={closeButtonRef} type="button" aria-label="Cerrar menú" onClick={() => setMobileOpen(false)} className="inline-flex h-11 w-11 items-center justify-center rounded-xl hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              <X className="h-5 w-5" />
+            </button>
+          </header>
+          <nav aria-label="Navegación de administración" className="flex flex-col gap-1 overflow-y-auto p-3">
+            {administrationItems.map((item) => <MobileSidebarLink key={item.href} item={item} active={isNavItemActive(pathname, item.href)} onNavigate={() => setMobileOpen(false)} />)}
+            {workspaceItems.length > 0 ? <div className="mt-2 flex flex-col gap-1 border-t border-border pt-2" aria-label="Secciones de la subasta">
+              {workspaceItems.map((item) => <MobileSidebarLink key={item.href} item={item} active={isNavItemActive(pathname, item.href)} onNavigate={() => setMobileOpen(false)} />)}
+            </div> : null}
+          </nav>
+          <AccountDrawerSection onNavigate={() => setMobileOpen(false)} />
+        </aside>
+      </div>, document.body,
+    ) : null}
     <aside ref={sidebarRef} className={cn(
       panel,
-      'relative z-40 shrink-0 lg:fixed lg:inset-y-0 lg:left-0 lg:z-[60] lg:flex lg:flex-col lg:overflow-hidden lg:rounded-r-3xl lg:shadow-2xl lg:shadow-black/25 lg:backdrop-blur-xl lg:transition-[width] lg:duration-200',
-      !mobileMenuVisible && 'hidden lg:flex',
+      'bg-drawer dark:bg-surface relative z-40 shrink-0 lg:fixed lg:inset-y-0 lg:left-0 lg:z-[60] lg:flex lg:flex-col lg:overflow-hidden lg:rounded-r-3xl lg:shadow-2xl lg:shadow-black/25 lg:backdrop-blur-xl lg:transition-[width] lg:duration-200',
+      'hidden lg:flex',
       collapsed ? 'lg:w-[4.5rem]' : 'lg:w-60',
     )}>
-      {mobileMenuVisible ? (
-        <div className="flex items-center justify-between gap-3 px-4 py-3 lg:hidden">
-          <div className="min-w-0">
-            <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              <span>{auctionId ? 'Subasta actual' : 'Administración'}</span>
-              {auction ? <span className={auctionStatusColor(auction.status)}>· {auctionStatusLabel(auction.status)}</span> : null}
-            </p>
-            <p className="mt-0.5 truncate text-sm font-semibold text-foreground">{auction?.title || 'Gestión de subastas'}</p>
-          </div>
-          <button
-            type="button"
-            aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
-            aria-expanded={mobileOpen}
-            aria-controls="admin-mobile-navigation"
-            onClick={() => setMobileOpen((open) => !open)}
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-      ) : null}
-
-      {mobileOpen ? (
-        <div id="admin-mobile-navigation" className="absolute inset-x-0 top-full z-[65] mt-2 max-h-[calc(100dvh-10rem)] overflow-y-auto rounded-2xl border border-border bg-surface p-2 shadow-2xl lg:hidden">
-          <nav aria-label="Navegación de administración" className="flex flex-col gap-1">
-            {adminNav.map((item) => (
-              <MobileSidebarLink key={item.href} item={item} active={isNavItemActive(pathname, item.href)} onNavigate={() => setMobileOpen(false)} />
-            ))}
-          </nav>
-          {workspaceItems.length > 0 ? (
-            <nav aria-label="Secciones de la subasta" className="mt-2 flex flex-col gap-1 border-t border-border pt-2">
-                {workspaceItems.map((item) => (
-                  <MobileSidebarLink key={item.href} item={item} active={isNavItemActive(pathname, item.href)} onNavigate={() => setMobileOpen(false)} />
-                ))}
-            </nav>
-          ) : null}
-        </div>
-      ) : null}
-
       <div className="hidden min-h-0 flex-1 flex-col lg:flex">
       <div className={cn('flex shrink-0 py-3', collapsed ? 'flex-col items-center gap-2 px-2' : 'items-center justify-between px-4')}>
         {collapsed ? (
@@ -124,18 +149,12 @@ export function AdminSidebar({ showMobileMenu = false }: { showMobileMenu?: bool
         )}
       </div>
       <nav aria-label="Navegación de administración" className={cn('flex gap-1 overflow-x-auto p-2 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto', collapsed && 'lg:items-center')}>
-        {adminNav.map((item) => (
+        {administrationItems.map((item) => (
           <SidebarLink key={item.href} item={item} active={isNavItemActive(pathname, item.href)} collapsed={collapsed} />
         ))}
       </nav>
       {workspaceItems.length > 0 ? (
         <>
-          <div className={cn('border-y border-border py-3', collapsed ? 'px-2 text-center' : 'px-4')}>
-            <p className={cn('text-[11px] font-bold uppercase tracking-wider text-muted-foreground', collapsed && 'lg:sr-only')}>Subasta actual</p>
-            <p className={cn('mt-1 truncate text-sm font-semibold text-foreground', collapsed && 'lg:sr-only')}>{auction?.title || 'Sin título'}</p>
-            {auction ? <p className={cn('mt-0.5 text-xs', auctionStatusColor(auction.status), collapsed && 'lg:sr-only')}>{auctionStatusLabel(auction.status)}</p> : null}
-            {collapsed ? <span aria-hidden="true" className="hidden text-xs font-bold text-primary lg:inline">{auction?.title?.slice(0, 1) || 'S'}</span> : null}
-          </div>
           <nav aria-label="Secciones de la subasta" className={cn('flex gap-1 overflow-x-auto p-2 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto', collapsed && 'lg:items-center')}>
             {workspaceItems.map((item) => (
               <SidebarLink key={item.href} item={item} active={isNavItemActive(pathname, item.href)} collapsed={collapsed} />
@@ -143,8 +162,10 @@ export function AdminSidebar({ showMobileMenu = false }: { showMobileMenu?: bool
           </nav>
         </>
       ) : null}
+      <AccountDrawerSection collapsed={collapsed} onNavigate={() => {}} />
       </div>
     </aside>
+    </>
   )
 }
 

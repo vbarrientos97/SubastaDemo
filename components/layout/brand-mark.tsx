@@ -6,7 +6,7 @@ export function BrandMark({ className }: { className?: string }) {
       src="/logo-mark.jpg"
       alt="Subasta Ganadera Panamá"
       className={cn(
-        'h-10 w-10 shrink-0 rounded-xl bg-white object-contain',
+        'h-10 w-10 shrink-0 rounded-xl bg-surface object-contain dark:bg-white',
         className,
       )}
     />

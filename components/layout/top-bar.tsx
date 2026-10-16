@@ -1,7 +1,6 @@
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { BrandMark } from '@/components/layout/brand-mark'
-import { ProfileMenu } from '@/components/account/profile-menu'
+import { MainMenuDrawer } from '@/components/layout/main-menu-drawer'
+import { BackLink } from '@/components/layout/back-link'
 import { eyebrow } from '@/lib/styles'
 import { cn } from '@/lib/utils'
 
@@ -9,12 +8,14 @@ export function TopBar({
   title,
   subtitle,
   backHref,
+  backHistory,
   right,
   transparent,
 }: {
   title: string
   subtitle?: string
   backHref?: string
+  backHistory?: boolean
   right?: React.ReactNode
   transparent?: boolean
 }) {
@@ -28,13 +29,7 @@ export function TopBar({
       )}
     >
       {backHref ? (
-        <Link
-          href={backHref}
-          aria-label="Volver"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-2 text-foreground transition hover:bg-accent"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
+        <BackLink href={backHref} historyBack={backHistory} className="h-11 shrink-0 rounded-xl bg-surface-2 px-3" />
       ) : (
         <BrandMark className="h-10 w-10 shrink-0" />
       )}
@@ -52,7 +47,7 @@ export function TopBar({
 
       <div className="flex shrink-0 items-center gap-2">
         {right}
-        <ProfileMenu />
+        <MainMenuDrawer />
       </div>
     </header>
   )

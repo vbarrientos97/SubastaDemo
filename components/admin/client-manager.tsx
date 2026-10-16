@@ -152,7 +152,7 @@ export function ClientManager({ auctionId }: { auctionId: string }) {
                     onClick={() => setPendingId(client.id)}
                     aria-label="Desasociar de esta subasta"
                     title="Desasociar de esta subasta"
-                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-red-600 transition hover:bg-red-500/10 hover:text-red-500 dark:text-red-400 dark:hover:text-red-300"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-destructive transition hover:bg-destructive/10 hover:text-destructive dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300"
                   >
                     <Link2Off className="h-4 w-4" />
                   </button>

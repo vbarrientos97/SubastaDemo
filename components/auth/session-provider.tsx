@@ -33,17 +33,21 @@ import type { EventInput } from '@/lib/domain/event'
 import { favoriteLots } from '@/lib/domain/favorites'
 import { catalogLots, type LotInput } from '@/lib/domain/lot'
 import { createLocalStorageSession } from '@/lib/session/local-storage'
+import { sanitizeLotsForBuyer } from '@/lib/domain/buyer-lot'
+import { buyerHomeAuctionId, lotsOfAuction, refreshAuctionStatuses } from '@/lib/domain/auction'
 
 type SessionApi = {
   ready: boolean
   state: SessionState | null
   user: ReturnType<typeof currentAccount>
   client: ReturnType<typeof currentClient>
+  auctionId: string | null
   lots: ReturnType<typeof catalogLots>
+  buyerLots: ReturnType<typeof catalogLots>
   favoriteLotIds: string[]
   favoriteLots: ReturnType<typeof favoriteLots>
   events: NonNullable<SessionState['events']>
-  signIn: (login: string, password: string) => { error: string | null; role: Role | null }
+  signIn: (login: string, password: string, auctionId?: string | null) => { error: string | null; role: Role | null; homePath: string }
   register: (input: RegisterInput) => string | null
   signOut: () => void
   toggleFavorite: (lotId: string) => string | null
@@ -78,26 +82,76 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SessionState | null>(null)
 
   useEffect(() => {
-    setState(openSession(repo))
+    const refreshStatuses = (initial = false) => {
+      const loaded = openSession(repo)
+      if (!loaded) return
+      const auctions = refreshAuctionStatuses(loaded.auctions)
+      const next = auctions === loaded.auctions ? loaded : { ...loaded, auctions }
+      if (next !== loaded) repo.save(next)
+      if (initial) {
+        setState(next)
+      } else if (auctions !== loaded.auctions) {
+        setState((current) => current ? { ...current, auctions } : next)
+      }
+    }
+    refreshStatuses(true)
+    const onFocus = () => refreshStatuses()
+    const intervalId = window.setInterval(onFocus, 30_000)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', onFocus)
+    }
   }, [repo])
+
+  const account = state ? currentAccount(state) : null
+  const auctionId = state && account?.role === 'buyer'
+    ? state.currentAuctionId ?? buyerHomeAuctionId(state.auctions, currentClient(state)?.id)
+    : null
+  const visibleLots = state
+    ? account?.role === 'buyer' && auctionId
+      ? lotsOfAuction(state.lots, auctionId)
+      : account?.role === 'buyer'
+        ? []
+      : state.lots
+    : []
+  const visibleState = state && account?.role === 'buyer'
+    ? {
+        ...state,
+        accounts: state.accounts.filter((item) => item.id === state.currentUserId),
+        clients: state.clients.filter((item) => item.id === currentClient(state)?.id),
+        currentAuctionId: auctionId,
+        auctions: auctionId ? state.auctions.filter((auction) => auction.id === auctionId) : [],
+        lots: visibleLots,
+        favoriteLotIds: state.favoriteLotIds.filter((id) => visibleLots.some((lot) => lot.id === id)),
+        events: state.events.filter((event) => !!event.lotId && visibleLots.some((lot) => lot.id === event.lotId)),
+      }
+    : state
 
   const api = useMemo<SessionApi>(
     () => ({
       ready: state !== null,
-      state,
+      state: visibleState,
       user: state ? currentAccount(state) : null,
       client: state ? currentClient(state) : null,
-      lots: catalogLots(state?.lots ?? []),
-      favoriteLotIds: state?.favoriteLotIds ?? [],
-      favoriteLots: favoriteLots(state?.lots ?? [], state?.favoriteLotIds ?? []),
-      events: state?.events ?? [],
-      signIn(login, password) {
-        const result = signInCase(repo, { login, password })
-        if (!result.ok) return { error: result.error, role: null }
+      auctionId,
+      lots: catalogLots(visibleLots),
+      buyerLots: sanitizeLotsForBuyer(catalogLots(visibleLots), state ? currentClient(state) : null),
+      favoriteLotIds: visibleState?.favoriteLotIds ?? [],
+      favoriteLots: sanitizeLotsForBuyer(favoriteLots(visibleLots, visibleState?.favoriteLotIds ?? []), state ? currentClient(state) : null),
+      events: visibleState?.events ?? [],
+      signIn(login, password, selectedAuctionId) {
+        const result = signInCase(repo, { login, password }, selectedAuctionId)
+        if (!result.ok) return { error: result.error, role: null, homePath: '/' }
         const consumed = consumePendingFavoriteCase(repo)
         const next = consumed.ok ? consumed.value : result.value
         setState(next)
-        return { error: null, role: currentAccount(next)?.role ?? null }
+        const homeAuctionId = next.currentAuctionId ?? buyerHomeAuctionId(next.auctions, currentClient(next)?.id)
+        return {
+          error: null,
+          role: currentAccount(next)?.role ?? null,
+          homePath: homeAuctionId ? `/subasta/${homeAuctionId}` : '/',
+        }
       },
       register(input) {
         const error = apply(registerBuyer(repo, input), setState)
@@ -160,7 +214,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return apply(deleteEventCase(repo, id), setState)
       },
     }),
-    [repo, state],
+    [repo, state, visibleState, visibleLots, auctionId],
   )
 
   return <SessionContext.Provider value={api}>{children}</SessionContext.Provider>

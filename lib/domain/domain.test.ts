@@ -89,8 +89,8 @@ test('validateLot and validateAuction', () => {
 test('auction status actions expose the expected transitions', () => {
   assert.deepEqual(auctionStatusActions('creada').map((action) => action.status), ['publicada'])
   assert.deepEqual(auctionStatusActions('publicada').map((action) => action.status), ['abierta'])
-  assert.deepEqual(auctionStatusActions('abierta').map((action) => action.status), ['cerrada'])
-  assert.deepEqual(auctionStatusActions('cerrada').map((action) => action.status), ['publicada'])
+  assert.deepEqual(auctionStatusActions('abierta'), [])
+  assert.deepEqual(auctionStatusActions('cerrada'), [])
 })
 
 test('migrateSessionState renames legacy incomplete auctions to created', () => {

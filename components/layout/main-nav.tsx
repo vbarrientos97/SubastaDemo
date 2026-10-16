@@ -5,11 +5,13 @@ import { usePathname } from 'next/navigation'
 import { useSession } from '@/components/auth/session-provider'
 import { isNavItemActive, mainNav } from '@/lib/navigation'
 import { cn } from '@/lib/utils'
-import { NotificationsMenu } from '@/components/layout/notifications-menu'
+import { useDemoNotifications } from '@/components/notifications/use-demo-notifications'
+import { unreadNotificationBadge } from '@/lib/application/notifications'
 
 export function MainNav({ variant }: { variant: 'bar' | 'dock' }) {
   const pathname = usePathname()
-  const { favoriteLotIds, user } = useSession()
+  const { favoriteLotIds, user, buyerLots } = useSession()
+  const { unreadCount } = useDemoNotifications(buyerLots.map((lot) => lot.id))
   const favCount = user ? favoriteLotIds.length : 0
   const items = mainNav.filter((item) => {
     if (item.auth && !user) return false
@@ -23,10 +25,9 @@ export function MainNav({ variant }: { variant: 'bar' | 'dock' }) {
         {items.map((item) => {
           const active = isNavItemActive(pathname, item.href)
           const Icon = item.icon
-          const badge = item.href === '/favoritos' ? favCount || undefined : item.badge
+          const badge = item.href === '/favoritos' ? (favCount ? String(favCount) : undefined) : item.href === '/notificaciones' ? unreadNotificationBadge(unreadCount) : item.badge
           return (
             <li key={item.href} className="flex-1">
-              {item.href === '/notificaciones' ? <NotificationsMenu variant="dock" /> : (
               <Link
                 href={item.href}
                 className={cn(
@@ -41,13 +42,9 @@ export function MainNav({ variant }: { variant: 'bar' | 'dock' }) {
                       {badge}
                     </span>
                   ) : null}
-                  {item.dot ? (
-                    <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
-                  ) : null}
                 </span>
                 {item.label}
               </Link>
-              )}
             </li>
           )
         })}
@@ -60,7 +57,7 @@ export function MainNav({ variant }: { variant: 'bar' | 'dock' }) {
       {items.map((item) => {
         const active = isNavItemActive(pathname, item.href)
         const Icon = item.icon
-        const badge = item.href === '/favoritos' ? favCount || undefined : item.badge
+        const badge = item.href === '/favoritos' ? (favCount ? String(favCount) : undefined) : item.href === '/notificaciones' ? unreadNotificationBadge(unreadCount) : item.badge
         return (
           <Link
             key={item.href}
@@ -68,7 +65,7 @@ export function MainNav({ variant }: { variant: 'bar' | 'dock' }) {
             className={cn(
               'inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition',
               active
-                ? 'bg-primary/10 text-primary'
+                ? 'bg-destructive-soft text-destructive dark:bg-primary/10 dark:text-primary'
                 : 'text-muted-foreground hover:bg-surface hover:text-foreground',
             )}
           >
@@ -78,9 +75,6 @@ export function MainNav({ variant }: { variant: 'bar' | 'dock' }) {
                 <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
                   {badge}
                 </span>
-              ) : null}
-              {item.dot ? (
-                <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
               ) : null}
             </span>
             {item.label}

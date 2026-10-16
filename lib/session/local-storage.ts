@@ -2,6 +2,7 @@ import type { SessionRepository, StoredSession } from '@/lib/application/session
 import { migrateSessionState, SESSION_SCHEMA_VERSION } from '@/lib/application/session-repository'
 import { lots as catalogLots } from '@/lib/data/auction'
 import { createSeed } from '@/lib/session/seed'
+import { OPEN_AUCTION_ID } from '@/lib/domain/auction'
 
 const KEY = 'subasta.session'
 
@@ -21,8 +22,56 @@ export function createLocalStorageSession(): SessionRepository {
         if (raw) {
           const parsed: unknown = JSON.parse(raw)
           if (isState(parsed)) {
+            const previousSchemaVersion = parsed.schemaVersion ?? 0
+            const refreshDemoSchedule = previousSchemaVersion < 17
+            const refreshOpenAuctionWindow = previousSchemaVersion < 18
             const migrated = migrateSessionState(parsed)
             let changed = (parsed.schemaVersion ?? 0) < SESSION_SCHEMA_VERSION
+            const seededAuctions = createSeed().auctions
+            const seededAuctionById = new Map(seededAuctions.map((auction) => [auction.id, auction]))
+            if (refreshDemoSchedule) {
+              migrated.auctions = migrated.auctions.map((auction) => {
+                const seeded = seededAuctionById.get(auction.id)
+                if (!seeded || !['subasta-carlos', 'subasta-brangus', 'subasta-cerrada'].includes(auction.id)) return auction
+                changed = true
+                return {
+                  ...auction,
+                  status: seeded.status,
+                  dates: seeded.dates,
+                  startAt: seeded.startAt,
+                  endAt: seeded.endAt,
+                  closedAt: seeded.closedAt,
+                }
+              })
+            }
+            if (refreshOpenAuctionWindow) {
+              const seededOpenAuction = seededAuctionById.get(OPEN_AUCTION_ID)
+              if (seededOpenAuction) {
+                migrated.auctions = migrated.auctions.map((auction) => {
+                  if (auction.id !== OPEN_AUCTION_ID) return auction
+                  changed = true
+                  return {
+                    ...auction,
+                    status: 'abierta',
+                    dates: seededOpenAuction.dates,
+                    startAt: seededOpenAuction.startAt,
+                    endAt: seededOpenAuction.endAt,
+                    closedAt: undefined,
+                  }
+                })
+              }
+            }
+            migrated.auctions = migrated.auctions.map((auction) => {
+              const seededAuction = seededAuctionById.get(auction.id)
+              if (!seededAuction || (auction.startAt && auction.endAt)) return auction
+              changed = true
+              return {
+                ...auction,
+                dates: !auction.dates || auction.dates === 'Próximamente' ? seededAuction.dates : auction.dates,
+                startAt: auction.startAt ?? seededAuction.startAt,
+                endAt: auction.endAt ?? seededAuction.endAt,
+              }
+            })
             const upcomingAuctionId = 'subasta-brangus'
             const upcomingCatalogIds = new Set(
               catalogLots.filter((lot) => lot.status === 'upcoming').map((lot) => lot.id),
@@ -37,7 +86,7 @@ export function createLocalStorageSession(): SessionRepository {
               return { ...lot, auctionId: upcomingAuctionId }
             })
 
-            const seededNextAuction = createSeed().auctions.find(
+            const seededNextAuction = seededAuctions.find(
               (auction) => auction.id === upcomingAuctionId,
             )
             if (seededNextAuction && !migrated.auctions.some((auction) => auction.id === upcomingAuctionId)) {
@@ -50,11 +99,24 @@ export function createLocalStorageSession(): SessionRepository {
               const totalLots = migrated.lots.filter((lot) => lot.auctionId === upcomingAuctionId).length
               if (
                 auction.status !== 'publicada' ||
-                auction.dates !== 'Próximamente' ||
+                auction.dates !== (seededNextAuction?.dates ?? auction.dates) ||
+                auction.startAt !== seededNextAuction?.startAt ||
+                auction.endAt !== seededNextAuction?.endAt ||
                 auction.totalLots !== totalLots ||
                 clientIds.length !== auction.clientIds.length
               ) changed = true
-              return { ...auction, status: 'publicada', dates: 'Próximamente', clientIds, totalLots }
+              return {
+                ...auction,
+                ...(refreshDemoSchedule && seededNextAuction ? {
+                  status: seededNextAuction.status,
+                  dates: seededNextAuction.dates,
+                  startAt: seededNextAuction.startAt,
+                  endAt: seededNextAuction.endAt,
+                  closedAt: seededNextAuction.closedAt,
+                } : {}),
+                clientIds,
+                totalLots,
+              }
             })
             if (!Array.isArray(parsed.favoriteLotIds)) changed = true
             if (!Array.isArray(parsed.events) || (migrated.schemaVersion ?? 0) < 2) {
@@ -210,7 +272,7 @@ export function createLocalStorageSession(): SessionRepository {
         /* replace a broken store with the seed */
       }
       const seeded = createSeed()
-      window.localStorage.setItem(KEY, JSON.stringify(seeded))
+      window.localStorage.setItem(KEY, JSON.stringify({ ...seeded, schemaVersion: SESSION_SCHEMA_VERSION }))
       return seeded
     },
     save(state) {

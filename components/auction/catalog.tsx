@@ -3,18 +3,16 @@
 import { useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Search, SlidersHorizontal } from 'lucide-react'
-import type { Lot, SexFilter } from '@/lib/domain/lot'
+import type { Lot, LotColor, SexFilter } from '@/lib/domain/lot'
 import {
+  LOT_COLORS,
   categoryLabel,
   countByCategory,
   filterLots,
-  lotsForTab,
   paginateLots,
   parseAmount,
-  parseCatalogTab,
   parseLotSort,
   sortLots,
-  type CatalogTab,
   type LotSort,
 } from '@/lib/domain/lot'
 import { caption, panelSm, selectCompactField } from '@/lib/styles'
@@ -37,7 +35,7 @@ function LotSearch({
     <div
       className={cn(
         'flex min-w-0 flex-1 items-center gap-2.5',
-        framed ? 'rounded-xl border border-input bg-surface px-3.5 py-2.5' : 'px-2',
+        framed ? 'rounded-xl border border-input bg-field px-3.5 py-2.5 dark:bg-surface' : 'px-2',
       )}
     >
       <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -89,7 +87,7 @@ function SexFilters({
             'text-sm font-semibold transition',
             variant === 'segmented' ? 'rounded-lg px-3 py-1.5' : 'shrink-0 rounded-full px-4 py-1.5',
             value === item.key
-              ? 'bg-black text-white dark:bg-primary dark:text-primary-foreground'
+              ? 'bg-primary text-primary-foreground dark:bg-primary dark:text-primary-foreground'
               : variant === 'segmented'
                 ? 'text-muted-foreground hover:text-foreground'
                 : 'bg-surface-2 text-muted-foreground hover:text-foreground',
@@ -125,7 +123,7 @@ function PriceFields({
       key={field.label}
       className={cn(
         'flex items-center gap-2',
-        layout === 'grid' && 'rounded-xl border border-input bg-surface px-3 py-2',
+        layout === 'grid' && 'rounded-xl border border-input bg-field px-3 py-2 dark:bg-surface',
       )}
     >
       <span className={cn(caption, 'shrink-0 text-muted-foreground')}>{field.label}</span>
@@ -137,7 +135,7 @@ function PriceFields({
         placeholder={field.placeholder}
         aria-label={field.aria}
         className={cn(
-          'bg-transparent text-sm font-semibold tabular text-foreground outline-none placeholder:text-muted-foreground/50',
+          'bg-transparent text-sm font-semibold tabular text-foreground outline-none placeholder:text-muted-foreground dark:placeholder:text-muted-foreground/50',
           layout === 'grid' ? 'w-full' : 'w-20',
         )}
       />
@@ -159,73 +157,34 @@ function PriceFields({
   return <div className="grid grid-cols-2 gap-2">{inputs}</div>
 }
 
-function CatalogTabs({
-  value,
-  onChange,
-}: {
-  value: CatalogTab
-  onChange: (value: CatalogTab) => void
-}) {
-  const tabs: { key: CatalogTab; label: string }[] = [
-    { key: 'abierta', label: 'Subasta abierta' },
-    { key: 'proxima', label: 'Próxima subasta' },
-  ]
-
-  return (
-    <div
-      className="flex gap-1 rounded-2xl bg-surface-2 p-1"
-      role="tablist"
-      aria-label="Catálogo"
-    >
-      {tabs.map((tab) => (
-        <button
-          key={tab.key}
-          type="button"
-          role="tab"
-          aria-selected={value === tab.key}
-          onClick={() => onChange(tab.key)}
-          className={cn(
-            'flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition',
-            value === tab.key
-              ? 'bg-black text-white shadow-sm dark:bg-surface dark:text-foreground'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          {tab.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 export function Catalog({
   lots,
-  openAuctionId,
-  upcomingAuctionId,
+  publicView = false,
 }: {
   lots: Lot[]
-  openAuctionId?: string
-  upcomingAuctionId?: string
+  publicView?: boolean
 }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const tab = parseCatalogTab(searchParams.get('tab'))
   const query = searchParams.get('q') ?? ''
   const sex = (searchParams.get('sexo') as SexFilter | null) ?? 'todos'
+  const rawColor = searchParams.get('color')
+  const color: LotColor | 'todos' = LOT_COLORS.find((item) => item === rawColor) ?? 'todos'
   const minPrice = searchParams.get('min') ?? ''
   const maxPrice = searchParams.get('max') ?? ''
   const sort = parseLotSort(searchParams.get('orden'))
   const page = Number.parseInt(searchParams.get('page') ?? '1', 10) || 1
 
-  const [priceOpen, setPriceOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const priceActive = minPrice !== '' || maxPrice !== ''
+  const filtersActive = color !== 'todos' || (!publicView && priceActive)
 
   function setParams(patch: Record<string, string | null>) {
     const next = new URLSearchParams(searchParams.toString())
     for (const [key, value] of Object.entries(patch)) {
-      if (value == null || value === '' || (key === 'tab' && value === 'abierta') || (key === 'sexo' && value === 'todos') || (key === 'orden' && value === 'orden') || (key === 'page' && value === '1')) {
+      if (value == null || value === '' || (key === 'sexo' && value === 'todos') || (key === 'color' && value === 'todos') || (key === 'orden' && value === 'orden') || (key === 'page' && value === '1')) {
         next.delete(key)
       } else {
         next.set(key, value)
@@ -235,7 +194,7 @@ export function Catalog({
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
 
-  const scoped = useMemo(() => lotsForTab(lots, tab), [lots, tab])
+  const scoped = lots
   const counts = useMemo(() => countByCategory(scoped), [scoped])
   const filtered = useMemo(
     () =>
@@ -243,26 +202,19 @@ export function Catalog({
         filterLots(scoped, {
           text: query,
           sex: sex === 'hembra' || sex === 'macho' ? sex : 'todos',
-          min: parseAmount(minPrice),
-          max: parseAmount(maxPrice),
+          color,
+          min: publicView ? null : parseAmount(minPrice),
+          max: publicView ? null : parseAmount(maxPrice),
         }),
         sort,
       ),
-    [scoped, query, sex, minPrice, maxPrice, sort],
+    [scoped, query, sex, color, minPrice, maxPrice, sort],
   )
   const paged = useMemo(() => paginateLots(filtered, page, PAGE_SIZE), [filtered, page])
+  const returnTo = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ''}`
 
   return (
     <div className="flex flex-col gap-4">
-      <CatalogTabs
-        value={tab}
-        onChange={(value) => {
-          const targetAuctionId = value === 'abierta' ? openAuctionId : upcomingAuctionId
-          const targetPath = targetAuctionId ? `/subasta/${targetAuctionId}` : pathname
-          router.push(`${targetPath}?tab=${value}`, { scroll: false })
-        }}
-      />
-
       <div className="hidden flex-col gap-3 lg:flex">
         <div className={cn(panelSm, 'flex items-center gap-3 p-2')}>
           <LotSearch
@@ -275,7 +227,7 @@ export function Catalog({
             counts={counts}
             variant="segmented"
           />
-          <label className="shrink-0 text-sm">
+          {!publicView ? <label className="shrink-0 text-sm">
             <span className="sr-only">Orden</span>
             <select
               value={sort}
@@ -283,33 +235,40 @@ export function Catalog({
               className={selectCompactField}
             >
               <option value="orden">Por lote</option>
-              <option value="precio-asc">Precio ↑</option>
-              <option value="precio-desc">Precio ↓</option>
+              {!publicView ? <option value="precio-asc">Precio ↑</option> : null}
+              {!publicView ? <option value="precio-desc">Precio ↓</option> : null}
             </select>
-          </label>
+          </label> : null}
           <div className="relative shrink-0">
             <button
               type="button"
-              aria-expanded={priceOpen}
-              onClick={() => setPriceOpen((open) => !open)}
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen((open) => !open)}
               className={cn(
                 'rounded-lg px-3 py-1.5 text-sm font-semibold transition',
-                priceOpen || priceActive
-                  ? 'bg-black text-white dark:bg-primary dark:text-primary-foreground'
+                filtersOpen || filtersActive
+                  ? 'bg-primary text-primary-foreground dark:bg-primary dark:text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              Precio
+              Filtros
             </button>
-            {priceOpen ? (
-              <div className={cn(panelSm, 'absolute right-0 top-full z-20 mt-2 p-3 shadow-lg')}>
-                <PriceFields
+            {filtersOpen ? (
+              <div className={cn(panelSm, 'absolute right-0 top-full z-20 mt-2 flex min-w-64 flex-col gap-3 p-3 shadow-lg')}>
+                <label className="flex flex-col gap-1 text-sm font-medium text-muted-foreground">
+                  Color
+                  <select value={color} onChange={(event) => setParams({ color: event.target.value, page: '1' })} className={selectCompactField + ' w-full'}>
+                    <option value="todos">Todos los colores</option>
+                    {LOT_COLORS.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </label>
+                {!publicView ? <PriceFields
                   minPrice={minPrice}
                   maxPrice={maxPrice}
                   onMinPrice={(value) => setParams({ min: value, page: '1' })}
                   onMaxPrice={(value) => setParams({ max: value, page: '1' })}
                   layout="row"
-                />
+                /> : null}
               </div>
             ) : null}
           </div>
@@ -325,28 +284,35 @@ export function Catalog({
           />
           <button
             type="button"
-            aria-label="Filtros de precio"
-            aria-expanded={priceOpen}
-            onClick={() => setPriceOpen((open) => !open)}
+            aria-label="Filtros"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((open) => !open)}
             className={cn(
               'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border bg-surface transition',
-              priceOpen || priceActive
-                ? 'border-black text-black dark:border-primary dark:text-primary'
+              filtersOpen || filtersActive
+                ? 'border-primary text-primary dark:border-primary dark:text-primary'
                 : 'border-input text-muted-foreground hover:text-foreground',
             )}
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>
         </div>
-        {priceOpen ? (
-          <PriceFields
+        {filtersOpen ? <div className={cn(panelSm, 'flex flex-col gap-3 p-3')}>
+          <label className="flex min-h-11 items-center gap-2 rounded-xl border border-input bg-field px-3 text-sm dark:bg-surface">
+            <span className="shrink-0 font-medium text-muted-foreground">Color</span>
+            <select value={color} onChange={(event) => setParams({ color: event.target.value, page: '1' })} className="min-w-0 flex-1 bg-transparent font-semibold text-foreground outline-none">
+              <option value="todos">Todos</option>
+              {LOT_COLORS.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          {!publicView ? <PriceFields
             minPrice={minPrice}
             maxPrice={maxPrice}
             onMinPrice={(value) => setParams({ min: value, page: '1' })}
             onMaxPrice={(value) => setParams({ max: value, page: '1' })}
             layout="grid"
-          />
-        ) : null}
+          /> : null}
+        </div> : null}
         <SexFilters
           value={sex === 'hembra' || sex === 'macho' ? sex : 'todos'}
           onChange={(value) => setParams({ sexo: value, page: '1' })}
@@ -362,11 +328,11 @@ export function Catalog({
       ) : (
         <>
           <div className="lg:hidden">
-            <LotMobileList lots={paged.items} />
+            <LotMobileList lots={paged.items} publicView={publicView} returnTo={returnTo} />
           </div>
           <div className="hidden gap-5 lg:grid lg:grid-cols-2 xl:grid-cols-3">
             {paged.items.map((lot) => (
-              <LotCard key={lot.id} lot={lot} />
+              <LotCard key={lot.id} lot={lot} publicView={publicView} returnTo={returnTo} />
             ))}
           </div>
         </>

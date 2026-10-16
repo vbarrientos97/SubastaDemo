@@ -15,8 +15,6 @@ const minProjectedColumn = 448
 
 export function BoardProjection({
   boardRef,
-  title,
-  dates,
   lots,
   clients,
   liveId,
@@ -26,8 +24,6 @@ export function BoardProjection({
   onClose,
 }: {
   boardRef: Ref<HTMLDivElement>
-  title: string
-  dates: string
   lots: Lot[]
   clients: Client[]
   liveId: string | null
@@ -45,21 +41,15 @@ export function BoardProjection({
       role="dialog"
       aria-modal="true"
       aria-label="Pizarra del remate"
-      className="fixed inset-0 z-50 flex h-full w-full flex-col bg-neutral-50 text-neutral-950"
+      className="fixed inset-0 z-50 flex h-full w-full flex-col bg-background text-foreground dark:bg-neutral-50 dark:text-neutral-950"
     >
-      <header className="flex items-start justify-between gap-6 px-6 pt-4 pb-3">
-        <div className="min-w-0">
-          <h2 className="line-clamp-2 font-display text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
-            {title}
-          </h2>
-          {dates ? <p className="mt-1 text-sm text-neutral-500">{dates}</p> : null}
-        </div>
+      <header className="flex items-center justify-end gap-6 px-6 py-3">
         <div className="flex shrink-0 items-center gap-1">
           {fullscreen ? null : (
             <button
               type="button"
               onClick={onFill}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-neutral-600 hover:bg-neutral-200/80"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-muted-foreground hover:bg-accent dark:text-neutral-600 dark:hover:bg-neutral-200/80"
             >
               <Maximize2 className="h-4 w-4" />
               Pantalla completa
@@ -68,7 +58,7 @@ export function BoardProjection({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-neutral-600 hover:bg-neutral-200/80"
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-muted-foreground hover:bg-accent dark:text-neutral-600 dark:hover:bg-neutral-200/80"
           >
             <X className="h-4 w-4" />
             Cerrar
@@ -76,7 +66,7 @@ export function BoardProjection({
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-neutral-200 bg-white px-6 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-border bg-card px-6 py-2.5 dark:border-neutral-200 dark:bg-white">
         <ProjectedPrize title="Premio macho" lot={prizes.macho} clients={clients} />
         <ProjectedPrize title="Premio hembra" lot={prizes.hembra} clients={clients} />
         <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 sm:ml-auto">
@@ -100,13 +90,13 @@ export function BoardProjection({
             key={column[0]?.id ?? index}
             className={cn(
               'flex min-w-[28rem] flex-1 flex-col',
-              index > 0 && 'border-l border-neutral-200',
+              index > 0 && 'border-l border-border dark:border-neutral-200',
             )}
           >
             <div
               className={cn(
                 projectedColumns,
-                'shrink-0 border-b border-neutral-200 bg-neutral-100/80 py-2 text-[11px] font-bold uppercase tracking-wide text-neutral-500',
+                'shrink-0 border-b border-border bg-surface-2 py-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground dark:border-neutral-200 dark:bg-neutral-100/80 dark:text-neutral-500',
               )}
             >
               <span>Lote</span>
@@ -119,8 +109,8 @@ export function BoardProjection({
                   key={lot.id}
                   style={{ height: `${100 / rows}%` }}
                   className={cn(
-                    'min-h-0 border-b border-neutral-200/80',
-                    liveId === lot.id && 'bg-red-50',
+                    'min-h-0 border-b border-border/80 dark:border-neutral-200/80',
+                    liveId === lot.id && 'bg-destructive-soft dark:bg-red-50',
                   )}
                 >
                   <ProjectedLot lot={lot} clients={clients} />
@@ -130,7 +120,7 @@ export function BoardProjection({
           </section>
         ))}
         {lots.length === 0 ? (
-          <p className="px-6 py-8 text-lg text-neutral-500">Ningún lote coincide con la búsqueda.</p>
+          <p className="px-6 py-8 text-lg text-muted-foreground dark:text-neutral-500">Ningún lote coincide con la búsqueda.</p>
         ) : null}
       </div>
     </div>
@@ -143,16 +133,16 @@ function ProjectedLot({ lot, clients }: { lot: Lot; clients: Client[] }) {
   const price = displayedPrice(lot)
   return (
     <div className={cn(projectedColumns, 'h-full')}>
-      <span className="text-[clamp(1rem,2.2vh,1.75rem)] font-bold tabular text-neutral-950">
+      <span className="text-[clamp(1rem,2.2vh,1.75rem)] font-bold tabular text-foreground dark:text-neutral-950">
         <LotMark lot={lot} />
       </span>
-      <span className="text-[clamp(1rem,2.2vh,1.75rem)] font-semibold tabular text-neutral-950">
+      <span className="text-[clamp(1rem,2.2vh,1.75rem)] font-semibold tabular text-foreground dark:text-neutral-950">
         {price > 0 ? formatUSD(price) : ''}
       </span>
       <span
         className={cn(
           'whitespace-nowrap text-[clamp(1rem,2.2vh,1.65rem)] font-semibold',
-          region ? regionBoardInkClass[region.ink] : 'text-neutral-400',
+          region ? regionBoardInkClass[region.ink] : 'text-muted-foreground dark:text-neutral-400',
         )}
       >
         {client?.name ?? ''}
@@ -173,11 +163,11 @@ function ProjectedPrize({
   const client = lot ? clientOfLot(lot, clients) : null
   return (
     <p className="flex items-baseline gap-2">
-      <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-500">{title}</span>
-      <span className="text-lg font-bold tabular text-neutral-950">
+      <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground dark:text-neutral-500">{title}</span>
+      <span className="text-lg font-bold tabular text-foreground dark:text-neutral-950">
         {lot ? formatUSD(displayedPrice(lot)) : '—'}
       </span>
-      {client ? <span className="text-sm font-semibold text-neutral-600">{client.name}</span> : null}
+      {client ? <span className="text-sm font-semibold text-muted-foreground dark:text-neutral-600">{client.name}</span> : null}
     </p>
   )
 }

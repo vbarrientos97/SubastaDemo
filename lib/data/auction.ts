@@ -29,6 +29,8 @@ const catalogSource: Omit<Lot, 'auctionId'>[] = [
     sire: 'MR V8 458/7',
     dam: 'MISS V8 731/6',
     breed: 'Brahman',
+    color: 'Gris',
+    birthDate: '2021-03-14',
     bids: [
       { bidder: 'n******************m', amount: 10000, date: '20/9/2025', time: '4:40 PM' },
       { bidder: 'n****************m', amount: 9900, date: '20/9/2025', time: '4:40 PM' },
@@ -56,6 +58,8 @@ const catalogSource: Omit<Lot, 'auctionId'>[] = [
     sire: 'Gyr Lechero PO',
     dam: 'Gyr Élite Registrada',
     breed: 'Gyr',
+    color: 'Colorado',
+    birthDate: '2022-08-21',
     bids: [
       { bidder: 'a*********o', amount: 2400, date: '20/9/2025', time: '3:12 PM' },
       { bidder: 'm*******z', amount: 2350, date: '20/9/2025', time: '3:10 PM' },
@@ -77,6 +81,8 @@ const catalogSource: Omit<Lot, 'auctionId'>[] = [
     minIncrement: 50,
     secondsLeft: null,
     breed: 'Nelore',
+    color: 'Gris',
+    birthDate: '2023-01-10',
     sire: 'Nelore Mocho 220',
     dam: 'Miss Darién 14',
     finalPrice: 2100,
@@ -101,6 +107,8 @@ const catalogSource: Omit<Lot, 'auctionId'>[] = [
     minIncrement: 50,
     secondsLeft: null,
     breed: 'Brangus',
+    color: 'Negro',
+    birthDate: '2023-11-12',
     sire: 'Brangus Negro 88',
     dam: 'Brangus Roja 31',
     opensAtLabel: 'Fecha por anunciar',
@@ -124,6 +132,8 @@ const catalogSource: Omit<Lot, 'auctionId'>[] = [
     sire: 'Gyr Lechero PO',
     dam: 'Gyr Élite Registrada',
     breed: 'Gyr',
+    color: 'Rojo',
+    birthDate: '2020-06-07',
     bids: [
       { bidder: 'c******s', amount: 6200, date: '20/9/2025', time: '4:12 PM' },
       { bidder: 'p********o', amount: 6100, date: '20/9/2025', time: '4:08 PM' },
@@ -146,6 +156,8 @@ const catalogSource: Omit<Lot, 'auctionId'>[] = [
     secondsLeft: 26 * 60,
     leader: 'm*****l',
     breed: 'Brahman',
+    color: 'Colorado',
+    birthDate: '2022-09-18',
     sire: 'Mister Tolé 334/2',
     dam: 'Miss David 110',
     bids: [
@@ -168,6 +180,8 @@ const catalogSource: Omit<Lot, 'auctionId'>[] = [
     minIncrement: 100,
     secondsLeft: null,
     breed: 'Nelore',
+    color: 'Blanco',
+    birthDate: '2022-02-23',
     sire: 'Nelore Ceba 17',
     dam: 'Nelore Blanca 40',
     finalPrice: 6000,
@@ -194,6 +208,8 @@ const catalogSource: Omit<Lot, 'auctionId'>[] = [
     secondsLeft: 90 * 60,
     leader: 'r****n',
     breed: 'Brangus',
+    color: 'Pinto negro',
+    birthDate: '2021-04-16',
     sire: 'Brangus Negro 12',
     dam: 'Brangus con Cría 4',
     bids: [
@@ -216,6 +232,8 @@ const catalogSource: Omit<Lot, 'auctionId'>[] = [
     minIncrement: 50,
     secondsLeft: null,
     breed: 'Gyr',
+    color: 'Amarillo',
+    birthDate: '2023-07-30',
     sire: 'Gyr Lechero PO',
     dam: 'Gyr Élite Registrada',
     opensAtLabel: 'Fecha por anunciar',
@@ -237,6 +255,8 @@ const catalogSource: Omit<Lot, 'auctionId'>[] = [
     secondsLeft: 42,
     leader: 'f*****e',
     breed: 'Nelore',
+    color: 'Blanco',
+    birthDate: '2020-12-05',
     sire: 'Mocho Darién 200',
     dam: 'Nelore Mocha 77',
     bids: [
@@ -261,7 +281,7 @@ export const lots: Lot[] = catalogSource.map((lot) => ({
     ...(galleryPhotosByBreed[lot.breed] ?? ['/cattle/gyr-cows.png', '/cattle/nelore-heifer.png']),
     '/cattle/certificate-example.svg',
   ],
-  ...(lot.id === 'lote-01' ? { seller: 'Carlos Santiago', color: 'Gris' } : {}),
+  ...(lot.id === 'lote-01' ? { seller: 'Carlos Santiago' } : {}),
 }))
 
 export function getLot(id: string) {

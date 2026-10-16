@@ -9,6 +9,7 @@ import { LotCard } from '@/components/auction/lot-card'
 import { LotMobileList } from '@/components/auction/lot-mini-list'
 import { FavoritesViewToggle } from '@/components/favorites/view-toggle'
 import { TopBar } from '@/components/layout/top-bar'
+import { BackLink } from '@/components/layout/back-link'
 import { useFavoritesView } from '@/hooks/use-favorites-view'
 import type { FavoritesView } from '@/lib/favorites-view'
 import { cn } from '@/lib/utils'
@@ -52,9 +53,10 @@ function FavoritosContent() {
 
   return (
     <>
-      <TopBar title="Mis Favoritos" subtitle="Sigue tus lotes" />
+      <TopBar title="Mis Favoritos" subtitle="Sigue tus lotes" backHref="/" />
 
       <main className="flex flex-col gap-5 px-4 py-4 lg:mx-auto lg:max-w-7xl lg:px-6 lg:py-6">
+        <div className="hidden lg:block"><BackLink href="/" /></div>
         <FavoritesHeading count={favorites.length} view={view} onView={setView} />
 
         {favorites.length === 0 ? (
@@ -69,14 +71,14 @@ function FavoritosContent() {
 
         {favorites.length > 0 ? (
           <div className="lg:hidden">
-            <LotMobileList lots={favorites} />
+            <LotMobileList lots={favorites} returnTo="/favoritos" />
           </div>
         ) : null}
 
         {favorites.length > 0 && view === 'grid' ? (
           <div className="hidden gap-5 lg:grid lg:grid-cols-2 xl:grid-cols-3">
             {favorites.map((lot) => (
-              <LotCard key={lot.id} lot={lot} />
+              <LotCard key={lot.id} lot={lot} returnTo="/favoritos" />
             ))}
           </div>
         ) : null}

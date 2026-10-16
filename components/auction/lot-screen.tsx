@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect } from 'react'
 import { Eye, Timer, Gavel, Trophy } from 'lucide-react'
 import { currentAccount } from '@/lib/application/session'
 import { canViewLot } from '@/lib/domain/auction'
-import { categoryLabel, displayedPrice, isActiveLot, isUrgentLot } from '@/lib/domain/lot'
+import { categoryLabel, displayedPrice, formatLotBirthDate, isActiveLot, isUrgentLot } from '@/lib/domain/lot'
 import { formatUSD } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { eyebrow, panel, panelSm } from '@/lib/styles'
@@ -14,17 +15,37 @@ import { Countdown } from '@/components/auction/countdown'
 import { BidGate } from '@/components/auction/bid-gate'
 import { FavoriteButton } from '@/components/auction/favorite-button'
 import { useSession } from '@/components/auth/session-provider'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { BackLink } from '@/components/layout/back-link'
 
 export function LotScreen({ id }: { id: string }) {
-  const { ready, state } = useSession()
-  const lot = state?.lots.find((item) => item.id === id)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const { ready, state, buyerLots, auctionId } = useSession()
+  const account = state ? currentAccount(state) : null
+  const lot = (account?.role === 'admin' ? state?.lots : buyerLots)?.find((item) => item.id === id)
   const auction = state?.auctions.find((item) => item.id === lot?.auctionId) ?? null
+  const requestedReturn = searchParams.get('returnTo')
+  const safeReturn = requestedReturn?.startsWith('/') && !requestedReturn.startsWith('//') ? requestedReturn : null
+  const buyerReturn = safeReturn && auctionId && (safeReturn === `/subasta/${auctionId}` || safeReturn.startsWith(`/subasta/${auctionId}?`) || ['/favoritos', '/pujas', '/notificaciones'].includes(safeReturn))
+    ? safeReturn
+    : auctionId ? `/subasta/${auctionId}` : '/'
+  const backHref = account?.role === 'admin'
+    ? `/admin/subastas/${auction?.id ?? ''}/lotes`
+    : account?.role === 'buyer' ? buyerReturn : safeReturn ?? (auction ? `/subasta/${auction.id}` : '/')
+  const wrongBuyerLot = account?.role === 'buyer' && !!auctionId && (!lot || lot.auctionId !== auctionId)
+
+  useEffect(() => {
+    if (ready && wrongBuyerLot) router.replace(auctionId ? `/subasta/${auctionId}` : '/')
+  }, [ready, wrongBuyerLot, auctionId, router])
 
   if (!ready || !state) {
-    return <p className="px-4 py-6 text-sm text-muted-foreground">Cargando…</p>
+    const loadingReturn = safeReturn ?? '/'
+    return <><TopBar title="Cargando lote" backHref={loadingReturn} backHistory={!!safeReturn} /><div className="px-4 py-6"><div className="mb-3 hidden lg:block"><BackLink href={loadingReturn} historyBack={!!safeReturn} /></div><p className="text-sm text-muted-foreground">Cargando…</p></div></>
   }
 
-  const account = currentAccount(state)
+  if (wrongBuyerLot) return <p className="px-4 py-6 text-sm text-muted-foreground">Abriendo tu subasta…</p>
+
   const hidden =
     !lot ||
     !auction ||
@@ -33,11 +54,33 @@ export function LotScreen({ id }: { id: string }) {
   if (hidden) {
     return (
       <main className="px-4 py-10">
+        <TopBar title="Detalle del lote" backHref={backHref} backHistory={!!safeReturn} />
         <p className="text-sm text-muted-foreground">Este lote no está en la subasta.</p>
-        <Link href="/" className="mt-3 inline-block text-sm font-semibold text-primary">
-          Volver al catálogo
-        </Link>
+        <div className="mt-3"><BackLink href={backHref} historyBack={!!safeReturn}>Volver al catálogo</BackLink></div>
       </main>
+    )
+  }
+
+  if (!account) {
+    return (
+      <>
+        <TopBar title={`Lote ${String(lot.order).padStart(2, '0')}`} backHref={backHref} backHistory={!!safeReturn} />
+        <main className="flex flex-col gap-4 px-4 py-4 lg:mx-auto lg:max-w-4xl lg:px-6 lg:py-6">
+          <div className="hidden lg:block"><BackLink href={backHref} historyBack={!!safeReturn} /></div>
+          <div className="overflow-hidden rounded-2xl">
+            <LiveGallery image={lot.image} images={lot.images} title={`Lote ${lot.order}`} youtubeUrl={lot.youtubeUrl} />
+          </div>
+          <h1 className="font-display text-2xl font-bold">Lote {String(lot.order).padStart(2, '0')}</h1>
+          <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-border bg-surface p-4 text-sm">
+            <div><dt className="text-muted-foreground">Raza</dt><dd className="mt-1 font-semibold">{lot.breed || '—'}</dd></div>
+            <div><dt className="text-muted-foreground">Color</dt><dd className="mt-1 font-semibold">{lot.color ?? '—'}</dd></div>
+            <div><dt className="text-muted-foreground">Nacimiento</dt><dd className="mt-1 font-semibold">{formatLotBirthDate(lot.birthDate)}</dd></div>
+            <div><dt className="text-muted-foreground">Peso</dt><dd className="mt-1 font-semibold">{lot.weightKg.toLocaleString('es-CR')} kg</dd></div>
+            <div><dt className="text-muted-foreground">Padre</dt><dd className="mt-1 font-semibold">{lot.sire ?? '—'}</dd></div>
+            <div><dt className="text-muted-foreground">Madre</dt><dd className="mt-1 font-semibold">{lot.dam ?? '—'}</dd></div>
+          </dl>
+        </main>
+      </>
     )
   }
 
@@ -47,7 +90,7 @@ export function LotScreen({ id }: { id: string }) {
 
   return (
     <>
-      <TopBar title="Ring en Vivo" backHref={`/subasta/${lot.auctionId}`} />
+      <TopBar title={`Lote ${String(lot.order).padStart(2, '0')}`} backHref={backHref} backHistory={!!safeReturn} />
 
       <div className="lg:mx-auto lg:grid lg:max-w-6xl lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-x-10 lg:px-6 lg:py-8">
       <div className="lg:col-start-1">
@@ -62,7 +105,7 @@ export function LotScreen({ id }: { id: string }) {
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-            {lot.status === 'closed' ? 'Lote cerrado' : 'Próximamente'}
+            {lot.status === 'closed' ? 'Lote cerrado' : 'Sin abrir'}
           </span>
         )}
         {auction?.status === 'abierta' ? (
@@ -80,7 +123,7 @@ export function LotScreen({ id }: { id: string }) {
         images={lot.images}
         title={lot.title}
         youtubeUrl={lot.youtubeUrl}
-        soldPaddle={lot.status === 'closed' ? lot.soldToPaddle : undefined}
+        soldPaddle={account?.role === 'admin' && lot.status === 'closed' ? lot.soldToPaddle : undefined}
       />
 
       {active && lot.secondsLeft != null && (
@@ -142,11 +185,7 @@ export function LotScreen({ id }: { id: string }) {
                 {lot.headCount} {lot.headCount === 1 ? 'cabeza' : 'cabezas'}
               </span>
             </div>
-            {(lot.color || lot.seller) && (
-              <p className="mt-2 text-sm text-muted-foreground">
-                {[lot.color, lot.seller].filter(Boolean).join(' · ')}
-              </p>
-            )}
+            {lot.seller ? <p className="mt-2 text-sm text-muted-foreground">Vendedor: {lot.seller}</p> : null}
           </div>
         </section>
       </div>
@@ -172,7 +211,7 @@ export function LotScreen({ id }: { id: string }) {
             </span>
             <div>
               <p className={cn(eyebrow, 'text-muted-foreground')}>
-                Adjudicado · Paleta #{lot.soldToPaddle}
+                {lot.buyerOutcome === 'won' ? 'Ganado por ti' : 'Vendido'}
               </p>
               <p className="font-display text-xl font-bold tabular text-success sm:text-2xl">
                 ${formatUSD(lot.finalPrice ?? 0)}{' '}
@@ -186,6 +225,15 @@ export function LotScreen({ id }: { id: string }) {
       </aside>
 
       <main className="flex flex-col gap-5 px-4 py-5 lg:col-start-1 lg:px-0 lg:py-0">
+        <div className="hidden lg:block"><BackLink href={backHref} historyBack={!!safeReturn} /></div>
+        <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-border bg-surface p-4 text-sm">
+          <div><dt className="text-muted-foreground">Raza</dt><dd className="mt-1 font-semibold">{lot.breed || '—'}</dd></div>
+          <div><dt className="text-muted-foreground">Color</dt><dd className="mt-1 font-semibold">{lot.color ?? '—'}</dd></div>
+          <div><dt className="text-muted-foreground">Nacimiento</dt><dd className="mt-1 font-semibold">{formatLotBirthDate(lot.birthDate)}</dd></div>
+          <div><dt className="text-muted-foreground">Peso</dt><dd className="mt-1 font-semibold">{lot.weightKg.toLocaleString('es-CR')} kg</dd></div>
+          <div><dt className="text-muted-foreground">Padre</dt><dd className="mt-1 font-semibold">{lot.sire ?? '—'}</dd></div>
+          <div><dt className="text-muted-foreground">Madre</dt><dd className="mt-1 font-semibold">{lot.dam ?? '—'}</dd></div>
+        </dl>
         {(lot.sire || lot.dam) && (
           <section className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-input bg-surface-2 p-4 dark:border-orange-900/50 dark:bg-orange-950/40">
@@ -219,7 +267,7 @@ export function LotScreen({ id }: { id: string }) {
 
           <div className={cn(panelSm, 'p-4')}>
             <span className={cn(eyebrow, 'text-muted-foreground')}>
-              {active ? 'Puja líder actual' : 'Puja ganadora'}
+              {active ? 'Puja líder actual' : lot.status === 'closed' ? (lot.buyerOutcome === 'won' ? 'Ganado por ti' : 'Vendido') : 'Puja ganadora'}
             </span>
             <p className="font-display text-2xl font-bold tabular text-success sm:text-3xl lg:text-4xl">
               ${formatUSD(displayedPrice(lot), { decimals: true })}

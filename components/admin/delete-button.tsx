@@ -19,7 +19,7 @@ export function DeleteButton({
       aria-label={label}
       title={label}
       className={cn(
-        'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-primary transition hover:bg-primary/10',
+        'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-primary transition hover:bg-destructive-soft dark:hover:bg-primary/10',
         className,
       )}
     >

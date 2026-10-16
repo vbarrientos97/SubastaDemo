@@ -2,7 +2,7 @@ import { lots as catalogLots, auction } from '@/lib/data/auction'
 import type { Client } from '@/lib/domain/account'
 import { OPEN_AUCTION_ID, type Auction } from '@/lib/domain/auction'
 import type { AuctionEvent } from '@/lib/domain/event'
-import type { Lot, LotCategory } from '@/lib/domain/lot'
+import { demoLotBirthDate, LOT_COLORS, type Lot, type LotCategory } from '@/lib/domain/lot'
 import type { RegionId } from '@/lib/domain/region'
 import type { SessionState } from '@/lib/application/session-repository'
 
@@ -70,6 +70,8 @@ function boardLot(order: number, price: number, clientId: string, category: LotC
     minIncrement: 50,
     secondsLeft: null,
     breed: 'Cebú',
+    color: LOT_COLORS[(order - 13) % LOT_COLORS.length],
+    birthDate: demoLotBirthDate(order),
     auctionId: OPEN_AUCTION_ID,
     finalPrice: price,
     soldToPaddle: client ? Number(client.paddle) : undefined,
@@ -98,7 +100,7 @@ function demoEvents(): AuctionEvent[] {
       description: 'Próxima jornada con terneros y vaquillas élite.',
       startsAt: new Date(now + 7 * day).toISOString(),
       endsAt: new Date(now + 8 * day).toISOString(),
-      href: '/?tab=proxima',
+      href: '/subasta/subasta-brangus',
       lotId: 'lote-04',
     },
     {
@@ -116,6 +118,20 @@ function demoEvents(): AuctionEvent[] {
       startsAt: new Date(now + 21 * day).toISOString(),
     },
   ]
+}
+
+function demoDateTime(minutesFromNow: number) {
+  const date = new Date(Date.now() + minutesFromNow * 60_000)
+  date.setSeconds(0, 0)
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 16)
+}
+
+function demoDateRange(startAt: string, endAt: string) {
+  const format = (value: string) => new Intl.DateTimeFormat('es-CR', {
+    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).format(new Date(value))
+  return `${format(startAt)} – ${format(endAt)}`
 }
 
 export function createSeed(): SessionState {
@@ -201,6 +217,12 @@ export function createSeed(): SessionState {
 }
 
 function demoAuctions(openLots: number): Auction[] {
+  const openStartAt = demoDateTime(-24 * 60)
+  const openEndAt = demoDateTime(21 * 24 * 60)
+  const upcomingStartAt = demoDateTime(3)
+  const upcomingEndAt = demoDateTime(180)
+  const closedStartAt = '2026-01-12T08:00:00'
+  const closedEndAt = '2026-01-12T18:00:00'
   return [
     {
       id: OPEN_AUCTION_ID,
@@ -209,7 +231,9 @@ function demoAuctions(openLots: number): Auction[] {
       location: auction.location,
       focus: auction.focus,
       closeLabel: auction.closeLabel,
-      dates: '19 y 20 de septiembre',
+      dates: demoDateRange(openStartAt, openEndAt),
+      startAt: openStartAt,
+      endAt: openEndAt,
       totalLots: openLots,
       connected: auction.connected,
       clientIds: ['carlos-santiago'],
@@ -221,7 +245,9 @@ function demoAuctions(openLots: number): Auction[] {
       location: 'Santiago, Veraguas',
       focus: 'Reemplazo',
       closeLabel: 'Aún no abre',
-      dates: 'Próximamente',
+      dates: demoDateRange(upcomingStartAt, upcomingEndAt),
+      startAt: upcomingStartAt,
+      endAt: upcomingEndAt,
       totalLots: 2,
       connected: 0,
       clientIds: ['carlos-santiago'],
@@ -233,7 +259,10 @@ function demoAuctions(openLots: number): Auction[] {
       location: 'Chitré',
       focus: 'Ceba',
       closeLabel: 'Cerrada',
-      dates: '12 de enero',
+      dates: '12 de enero de 2026',
+      startAt: closedStartAt,
+      endAt: closedEndAt,
+      closedAt: closedEndAt,
       totalLots: 2,
       connected: 0,
       clientIds: [],
@@ -275,9 +304,10 @@ function closedLot(
     minIncrement: 50,
     secondsLeft: null,
     breed: 'Cebú',
+    birthDate: demoLotBirthDate(order),
     auctionId: 'subasta-cerrada',
     seller: 'Ganadera Sur',
-    color: 'Colorado',
+    color: id === 'lote-enero-2' ? 'Barroso' : 'Colorado',
     finalPrice: 1500,
     winnerClientId,
     inCatalog: true,

@@ -4,6 +4,54 @@ export type LotStatus = 'extended' | 'live' | 'imminent' | 'closed' | 'upcoming'
 export type LotCategory = 'macho' | 'hembra'
 export type SexFilter = 'todos' | LotCategory
 
+export const LOT_COLORS = [
+  'Negro', 'Colorado', 'Rojo', 'Blanco', 'Pinto', 'Pinto negro', 'Pinto colorado',
+  'Barroso', 'Gris', 'Café', 'Amarillo', 'Overo', 'Berrendo', 'Cebrado',
+] as const
+export type LotColor = (typeof LOT_COLORS)[number]
+
+// Mantener los colores demo limitados a este catálogo. En producción, validar el catálogo y
+// aplicar cualquier regla de visibilidad de lotes en el servidor, no solo en el frontend.
+export function normalizeLotColor(value: unknown): LotColor | undefined {
+  if (typeof value !== 'string') return undefined
+  return LOT_COLORS.find((color) => color.toLocaleLowerCase('es').trim() === value.toLocaleLowerCase('es').trim())
+}
+
+export function demoLotColor(breed: string, order: number): LotColor {
+  const colorsByBreed: Record<string, readonly LotColor[]> = {
+    Angus: ['Negro', 'Colorado'],
+    Brahman: ['Gris', 'Blanco', 'Colorado'],
+    Brangus: ['Negro', 'Pinto negro', 'Colorado'],
+    Gyr: ['Colorado', 'Rojo', 'Amarillo'],
+    Hereford: ['Pinto colorado', 'Colorado'],
+    Holstein: ['Pinto negro', 'Blanco'],
+    Nelore: ['Blanco', 'Gris'],
+  }
+  const colors = colorsByBreed[breed] ?? LOT_COLORS
+  return colors[(Math.max(1, order) - 1) % colors.length]
+}
+
+export function demoLotBirthDate(order: number): string {
+  const year = 2019 + (order % 5)
+  const month = ((order * 3 - 1) % 12) + 1
+  const day = ((order * 7 - 1) % 28) + 1
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+export function formatLotBirthDate(value?: string) {
+  if (!value) return '—'
+  const parts = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (parts) return `${parts[3]}/${parts[2]}/${parts[1]}`
+  const legacyParts = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  return legacyParts ? value : '—'
+}
+
+export function lotBirthDateInputValue(value?: string) {
+  if (!value) return ''
+  const parts = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  return parts ? `${parts[3]}-${parts[2]}-${parts[1]}` : value
+}
+
 export type Bid = {
   bidder: string
   /** Stable buyer identity for bids created after this field was introduced. */
@@ -23,6 +71,7 @@ export type Lot = {
   image: string
   headCount: number
   weightKg: number
+  birthDate?: string
   pricePerKg: number
   currentBid: number
   minIncrement: number
@@ -37,7 +86,7 @@ export type Lot = {
   /** Subasta dueña del lote. */
   auctionId: string
   seller?: string
-  color?: string
+  color?: LotColor
   /** Hasta cuatro fotos. `image` sigue siendo la portada. */
   images?: string[]
   youtubeUrl?: string
@@ -52,11 +101,14 @@ export type Lot = {
   opensAtLabel?: string
   closesAtLabel?: string
   bids?: Bid[]
+  /** Buyer-only outcome produced by sanitizeLotForBuyer. */
+  buyerOutcome?: 'won' | 'sold'
 }
 
 export type LotQuery = {
   text: string
   sex: SexFilter
+  color?: LotColor | 'todos'
   min: number | null
   max: number | null
 }
@@ -79,11 +131,6 @@ export function isActiveLot(lot: Lot) {
 
 export function isUrgentLot(lot: Lot) {
   return lot.status === 'extended' || lot.status === 'imminent'
-}
-
-/** Demo interest for lots that have not opened yet. Stable per lote. */
-export function followerCount(lot: Lot) {
-  return 6 + (lot.order % 5) * 2
 }
 
 export function competingBidders(lot: Lot) {
@@ -113,15 +160,17 @@ export function filterLots(lots: Lot[], query: LotQuery) {
   const text = query.text.trim().toLowerCase()
   return lots.filter((lot) => {
     const matchesSex = query.sex === 'todos' || lot.category === query.sex
+    const matchesColor = !query.color || query.color === 'todos' || lot.color === query.color
     const matchesText =
       !text ||
       lot.title.toLowerCase().includes(text) ||
       lot.registeredName.toLowerCase().includes(text) ||
-      lot.breed.toLowerCase().includes(text)
+      lot.breed.toLowerCase().includes(text) ||
+      (lot.color?.toLowerCase().includes(text) ?? false)
     const price = displayedPrice(lot)
     const matchesPrice =
       (query.min == null || price >= query.min) && (query.max == null || price <= query.max)
-    return matchesSex && matchesText && matchesPrice
+    return matchesSex && matchesColor && matchesText && matchesPrice
   })
 }
 
@@ -133,15 +182,7 @@ export function countByCategory(lots: Lot[]) {
   }
 }
 
-export type CatalogTab = 'abierta' | 'proxima'
 export type LotSort = 'orden' | 'precio-asc' | 'precio-desc'
-
-export function lotsForTab(lots: Lot[], tab: CatalogTab) {
-  if (tab === 'proxima') {
-    return lots.filter((lot) => lot.status === 'upcoming')
-  }
-  return lots.filter((lot) => lot.status !== 'upcoming')
-}
 
 export function sortLots(lots: Lot[], sort: LotSort) {
   const copy = lots.slice()
@@ -167,10 +208,6 @@ export function paginateLots<T>(items: T[], page: number, pageSize: number) {
   }
 }
 
-export function parseCatalogTab(value: string | null): CatalogTab {
-  return value === 'proxima' ? 'proxima' : 'abierta'
-}
-
 export function parseLotSort(value: string | null): LotSort {
   if (value === 'precio-asc' || value === 'precio-desc') return value
   return 'orden'
@@ -184,6 +221,7 @@ export type LotInput = {
   status: LotStatus
   seller: string
   color: string
+  birthDate?: string
   sire: string
   dam: string
   youtubeUrl: string
@@ -197,6 +235,8 @@ export function lotImages(input: Pick<LotInput, 'images'>) {
 export function validateLot(input: LotInput) {
   if (!input.title.trim()) return 'El lote necesita un nombre.'
   if (!input.breed.trim()) return 'Escribe la raza.'
+  if (!input.color) return 'Elige el color.'
+  if (!normalizeLotColor(input.color)) return 'Elige un color válido.'
   if (!Number.isFinite(input.price) || input.price < 0) return 'El precio no es válido.'
   if (input.youtubeUrl.trim() && !youtubeId(input.youtubeUrl)) {
     return 'El enlace de YouTube no es válido.'

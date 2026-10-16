@@ -6,12 +6,16 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useSession } from '@/components/auth/session-provider'
 import { BrandMark } from '@/components/layout/brand-mark'
+import { AccountDrawerSection } from '@/components/account/profile-menu'
+import { useDemoNotifications } from '@/components/notifications/use-demo-notifications'
+import { unreadNotificationBadge } from '@/lib/application/notifications'
 import { isNavItemActive, mainNav } from '@/lib/navigation'
 import { cn } from '@/lib/utils'
 
 export function DesktopSidebar() {
   const pathname = usePathname()
-  const { favoriteLotIds, user } = useSession()
+  const { favoriteLotIds, user, buyerLots } = useSession()
+  const { unreadCount } = useDemoNotifications(buyerLots.map((lot) => lot.id))
   const [collapsed, setCollapsed] = useState(false)
   const sidebarRef = useRef<HTMLElement>(null)
 
@@ -27,7 +31,6 @@ export function DesktopSidebar() {
   }, [collapsed])
 
   const items = mainNav.filter((item) => {
-    if (item.href === '/notificaciones') return false
     if (item.auth && !user) return false
     if (item.buyer && user?.role !== 'buyer') return false
     return true
@@ -38,7 +41,7 @@ export function DesktopSidebar() {
       ref={sidebarRef}
       aria-label="Navegación principal"
       className={cn(
-        'fixed inset-y-0 left-0 z-[60] hidden flex-col overflow-hidden rounded-r-3xl border border-border bg-background/95 shadow-2xl shadow-black/25 backdrop-blur-xl transition-[width] duration-200 lg:flex',
+        'fixed inset-y-0 left-0 z-[60] hidden flex-col overflow-hidden rounded-r-3xl border border-border bg-drawer/95 shadow-[var(--shadow-card)] backdrop-blur-xl transition-[width] duration-200 dark:bg-background/95 dark:shadow-2xl dark:shadow-black/25 lg:flex',
         collapsed ? 'w-[4.5rem]' : 'w-60',
       )}
     >
@@ -77,7 +80,7 @@ export function DesktopSidebar() {
         {items.map((item) => {
           const active = isNavItemActive(pathname, item.href)
           const Icon = item.icon
-          const badge = item.href === '/favoritos' ? favoriteLotIds.length || undefined : item.badge
+          const badge = item.href === '/favoritos' ? (favoriteLotIds.length ? String(favoriteLotIds.length) : undefined) : item.href === '/notificaciones' ? unreadNotificationBadge(unreadCount) : item.badge
           return (
             <Link
               key={item.href}
@@ -93,13 +96,13 @@ export function DesktopSidebar() {
               <span className="relative shrink-0">
                 <Icon className="h-5 w-5" />
                 {badge ? <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">{badge}</span> : null}
-                {item.dot ? <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" /> : null}
               </span>
               {collapsed ? <span className="sr-only">{item.label}</span> : <span className="truncate">{item.label}</span>}
             </Link>
           )
         })}
       </nav>
+      {user ? <AccountDrawerSection collapsed={collapsed} onNavigate={() => {}} /> : null}
     </aside>
   )
 }

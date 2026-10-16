@@ -34,15 +34,15 @@ export function AuctionReports({ auctionId, title }: { auctionId: string; title:
 
   return (
     <section className="flex flex-col gap-5 sm:gap-6">
-      <header className="relative overflow-hidden rounded-3xl bg-slate-950 px-5 py-6 text-white sm:px-7 sm:py-8">
-        <div className="pointer-events-none absolute -right-12 -top-24 h-64 w-64 rounded-full border-[30px] border-white/5" />
-        <div className="pointer-events-none absolute -bottom-24 right-24 h-48 w-48 rounded-full bg-primary/20 blur-3xl" />
+      <header className="relative overflow-hidden rounded-3xl bg-surface px-5 py-6 text-foreground dark:bg-slate-950 dark:text-white sm:px-7 sm:py-8">
+        <div className="pointer-events-none absolute -right-12 -top-24 h-64 w-64 rounded-full border-[30px] border-foreground/5 dark:border-white/5" />
+        <div className="pointer-events-none absolute -bottom-24 right-24 h-48 w-48 rounded-full bg-primary/10 blur-3xl dark:bg-primary/20" />
         <div className="relative">
-          <p className={cn(eyebrow, 'text-red-300')}>Reporte de subasta</p>
+          <p className={cn(eyebrow, 'text-primary dark:text-red-300')}>Reporte de subasta</p>
           <h1 className="mt-2 max-w-3xl break-words font-display text-xl font-bold leading-tight sm:text-2xl">
             {title || 'Sin título'}
           </h1>
-          <p className="mt-2 max-w-xl text-sm text-white/65">
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground dark:text-white/65">
             Resumen de ventas cerradas y distribución de compradores por zona.
           </p>
         </div>
@@ -54,7 +54,7 @@ export function AuctionReports({ auctionId, title }: { auctionId: string; title:
           value={`$${formatUSD(totalSold)}`}
           note="En lotes adjudicados"
           icon={CircleDollarSign}
-          accent="text-emerald-600 dark:text-emerald-400"
+          accent="text-success dark:text-emerald-400"
           iconBg="bg-emerald-500/10"
         />
         <SummaryCard
@@ -63,7 +63,7 @@ export function AuctionReports({ auctionId, title }: { auctionId: string; title:
           note={`de ${auctionLots.length} lotes registrados`}
           icon={PackageCheck}
           accent="text-primary"
-          iconBg="bg-primary/10"
+          iconBg="bg-destructive-soft dark:bg-primary/10"
         />
         <SummaryCard
           label="Precio promedio"
@@ -77,7 +77,7 @@ export function AuctionReports({ auctionId, title }: { auctionId: string; title:
 
       {soldLots.length === 0 ? (
         <section className={cn(panel, 'flex flex-col items-center px-5 py-12 text-center')}>
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive-soft text-destructive dark:bg-primary/10 dark:text-primary">
             <BarChart3 className="h-5 w-5" />
           </span>
           <h2 className="mt-4 font-display text-base font-bold text-foreground sm:text-lg">Aún no hay ventas cerradas</h2>
@@ -173,7 +173,7 @@ export function AuctionReports({ auctionId, title }: { auctionId: string; title:
                     >
                       <span className="min-w-0">
                         <span className="block truncate font-semibold text-foreground">
-                          Lote {String(lot.order).padStart(2, '0')} · {lot.breed}
+                          Lote {String(lot.order).padStart(2, '0')} · {lot.breed} · Color: {lot.color ?? '—'}
                         </span>
                         <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                           {clientOfLot(lot, state.clients)?.name ?? 'Comprador sin nombre'}

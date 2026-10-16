@@ -46,7 +46,7 @@ export function FavoriteButton({
             ? 'px-3.5 py-2 text-sm font-semibold ring-1'
             : 'h-9 w-9 justify-center bg-black/45 ring-1 backdrop-blur-sm',
           fav
-            ? 'bg-primary/15 text-primary ring-primary/40'
+            ? 'bg-destructive-soft text-destructive ring-destructive/40 dark:bg-primary/15 dark:text-primary dark:ring-primary/40'
             : label
               ? 'bg-surface-2 text-foreground ring-border'
               : 'text-white ring-white/15 hover:ring-white/30',

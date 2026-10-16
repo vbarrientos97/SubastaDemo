@@ -7,6 +7,7 @@ import { useSession } from '@/components/auth/session-provider'
 import { regions } from '@/lib/domain/region'
 import { btnPrimary, btnPrimaryMotion, eyebrow, field, panel, selectField } from '@/lib/styles'
 import { cn } from '@/lib/utils'
+import { BackLink } from '@/components/layout/back-link'
 
 function safeNext(value: string | null) {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return '/'
@@ -31,11 +32,12 @@ export function SignUpForm() {
       setError(message)
       return
     }
-    router.push(safeNext(search.get('next')))
+    router.replace(safeNext(search.get('next')))
   }
 
   return (
     <form onSubmit={submit} className={cn(panel, 'flex flex-col gap-4 p-5')}>
+      <BackLink href={`/entrar${search.get('next') ? `?next=${encodeURIComponent(safeNext(search.get('next')))}` : ''}`} className="fixed left-4 top-4 z-50 bg-background shadow-sm" />
       <div>
         <p className={cn(eyebrow, 'text-primary')}>Comprador</p>
         <h1 className="mt-1 font-display text-2xl font-bold text-foreground">Crear cuenta</h1>

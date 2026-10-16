@@ -14,7 +14,6 @@ import {
   salesTotal,
   type BoardQuery,
 } from '@/lib/domain/board'
-import { auctionStatusColor, auctionStatusLabel } from '@/lib/domain/auction'
 import { categoryLabel, displayedPrice, statusLabel, type Lot } from '@/lib/domain/lot'
 import { regions, type RegionInk } from '@/lib/domain/region'
 import { formatKg, formatUSD } from '@/lib/format'
@@ -105,24 +104,6 @@ export function Board({ auctionId }: { auctionId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <p className={cn(eyebrow, 'flex items-center gap-2', auctionStatusColor(auction.status))}>
-            {active ? (
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-            ) : null}
-            {auctionStatusLabel(auction.status)}
-            {active ? ' · En vivo' : ''}
-          </p>
-          <h1 className="mt-1 break-words font-display text-xl font-bold leading-tight text-foreground sm:text-2xl">
-            {auction.title || 'Sin subasta'}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {[auction.seller, auction.location, auction.dates].filter(Boolean).join(' · ')}
-          </p>
-        </div>
-      </header>
-
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Total vendido" value={`$${formatUSD(salesTotal(lots))}`} hint="Ventas cerradas" />
         <Stat
@@ -187,12 +168,12 @@ export function Board({ auctionId }: { auctionId: string }) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[56rem] text-left text-sm">
+          <table className="w-full min-w-[34rem] text-left text-sm sm:min-w-[56rem]">
             <thead>
               <tr className={cn(caption, 'border-y border-border text-muted-foreground')}>
                 <th className="px-4 py-2.5 font-semibold">Lote</th>
-                <th className="px-4 py-2.5 font-semibold">Padre</th>
-                <th className="px-4 py-2.5 font-semibold">Madre</th>
+                <th className="hidden px-4 py-2.5 font-semibold sm:table-cell">Padre</th>
+                <th className="hidden px-4 py-2.5 font-semibold sm:table-cell">Madre</th>
                 <th className="px-4 py-2.5 font-semibold">Sexo</th>
                 <th className="px-4 py-2.5 font-semibold">Precio</th>
                 <th className="px-4 py-2.5 font-semibold">Comprador</th>
@@ -243,8 +224,6 @@ export function Board({ auctionId }: { auctionId: string }) {
         ? createPortal(
             <BoardProjection
               boardRef={boardRef}
-              title={auction.title || 'Sin subasta'}
-              dates={[auction.seller, auction.dates].filter(Boolean).join(' · ')}
               lots={filtered}
               clients={clients}
               liveId={active?.id ?? null}
@@ -331,10 +310,10 @@ function SaleRow({
       <td className="px-4 py-3 font-semibold tabular text-foreground">
         <LotNumber lot={lot} live={live} />
       </td>
-      <td className="max-w-48 truncate px-4 py-3 text-muted-foreground">
+      <td className="hidden max-w-48 truncate px-4 py-3 text-muted-foreground sm:table-cell">
         {lot.sire || '—'}
       </td>
-      <td className="max-w-48 truncate px-4 py-3 text-muted-foreground">
+      <td className="hidden max-w-48 truncate px-4 py-3 text-muted-foreground sm:table-cell">
         {lot.dam || '—'}
       </td>
       <td className="px-4 py-3 font-medium text-muted-foreground">
@@ -417,7 +396,7 @@ function LotInfoModal({ lot, clients, onClose }: { lot: Lot; clients: Client[]; 
                 <p className="mt-1 font-display text-lg font-bold text-foreground">{lot.breed}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{lot.headCount} {lot.headCount === 1 ? 'cabeza' : 'cabezas'}</p>
                 {lot.color || lot.seller ? (
-                  <p className="mt-2 text-sm text-muted-foreground">{[lot.color, lot.seller].filter(Boolean).join(' · ')}</p>
+                <p className="mt-2 text-sm text-muted-foreground">Color: {lot.color ?? '—'}{lot.seller ? ` · ${lot.seller}` : ''}</p>
                 ) : null}
               </div>
 

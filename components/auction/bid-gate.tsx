@@ -47,5 +47,9 @@ export function BidGate({
       </Link>
     )
   }
+  if (access.reason === 'not-open' && auction?.status === 'publicada' && auction.startAt) {
+    const opensAt = new Intl.DateTimeFormat('es-CR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(auction.startAt))
+    return <p className="text-sm font-medium text-muted-foreground">La subasta se abre el {opensAt}.</p>
+  }
   return <p className="text-sm font-medium text-muted-foreground">{bidDenialMessage(access.reason)}</p>
 }

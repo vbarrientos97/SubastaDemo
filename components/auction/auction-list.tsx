@@ -23,7 +23,7 @@ export function AuctionList({
       {auctions.map((auction) => (
         <li key={auction.id}>
           <Link
-            href={`/subasta/${auction.id}${auction.status === 'publicada' ? '?tab=proxima' : ''}`}
+            href={`/subasta/${auction.id}`}
             className={cn(panel, 'block p-4 transition hover:bg-accent')}
           >
             <span className={cn('inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide', auctionStatusBadgeColor(auction.status))}>
