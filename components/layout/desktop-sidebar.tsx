@@ -8,7 +8,7 @@ import { useSession } from '@/components/auth/session-provider'
 import { BrandMark } from '@/components/layout/brand-mark'
 import { AccountDrawerSection } from '@/components/account/profile-menu'
 import { useDemoNotifications } from '@/components/notifications/use-demo-notifications'
-import { unreadNotificationBadge } from '@/lib/application/notifications'
+import { unreadNotificationBadge } from '@/lib/notifications/demo'
 import { isNavItemActive, mainNav } from '@/lib/navigation'
 import { cn } from '@/lib/utils'
 

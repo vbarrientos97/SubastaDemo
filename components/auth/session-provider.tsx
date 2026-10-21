@@ -43,9 +43,9 @@ type SessionApi = {
   client: ReturnType<typeof currentClient>
   auctionId: string | null
   lots: ReturnType<typeof catalogLots>
-  buyerLots: ReturnType<typeof catalogLots>
+  buyerLots: ReturnType<typeof sanitizeLotsForBuyer>
   favoriteLotIds: string[]
-  favoriteLots: ReturnType<typeof favoriteLots>
+  favoriteLots: ReturnType<typeof sanitizeLotsForBuyer>
   events: NonNullable<SessionState['events']>
   signIn: (login: string, password: string, auctionId?: string | null) => { error: string | null; role: Role | null; homePath: string }
   register: (input: RegisterInput) => string | null

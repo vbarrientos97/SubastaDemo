@@ -19,6 +19,7 @@ export function FavoriteButton({
   const { ready, user, favoriteLotIds, toggleFavorite, savePendingFavorite } = useSession()
   const pathname = usePathname()
   const [promptOpen, setPromptOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const fav = favoriteLotIds.includes(lotId)
 
   function onClick(event: React.MouseEvent) {
@@ -26,11 +27,12 @@ export function FavoriteButton({
     event.stopPropagation()
     if (!ready) return
     if (!user) {
-      savePendingFavorite(lotId)
-      setPromptOpen(true)
+      const message = savePendingFavorite(lotId)
+      setError(message)
+      if (!message) setPromptOpen(true)
       return
     }
-    toggleFavorite(lotId)
+    setError(toggleFavorite(lotId))
   }
 
   return (
@@ -57,6 +59,7 @@ export function FavoriteButton({
         {label && <span>{fav ? 'En favoritos' : 'Favorito'}</span>}
       </button>
       <AuthPrompt open={promptOpen} onClose={() => setPromptOpen(false)} nextPath={pathname} />
+      {error ? <span role="alert" className="text-sm text-destructive">{error}</span> : null}
     </>
   )
 }

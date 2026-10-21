@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { safeInternalPath } from '@/lib/internal-path'
 import { useEffect } from 'react'
 import { Eye, Timer, Gavel, Trophy } from 'lucide-react'
 import { currentAccount } from '@/lib/application/session'
@@ -26,7 +27,7 @@ export function LotScreen({ id }: { id: string }) {
   const lot = (account?.role === 'admin' ? state?.lots : buyerLots)?.find((item) => item.id === id)
   const auction = state?.auctions.find((item) => item.id === lot?.auctionId) ?? null
   const requestedReturn = searchParams.get('returnTo')
-  const safeReturn = requestedReturn?.startsWith('/') && !requestedReturn.startsWith('//') ? requestedReturn : null
+  const safeReturn = requestedReturn ? safeInternalPath(requestedReturn) : null
   const buyerReturn = safeReturn && auctionId && (safeReturn === `/subasta/${auctionId}` || safeReturn.startsWith(`/subasta/${auctionId}?`) || ['/favoritos', '/pujas', '/notificaciones'].includes(safeReturn))
     ? safeReturn
     : auctionId ? `/subasta/${auctionId}` : '/'
@@ -124,7 +125,7 @@ export function LotScreen({ id }: { id: string }) {
         images={lot.images}
         title={lot.title}
         youtubeUrl={lot.youtubeUrl}
-        soldPaddle={account?.role === 'admin' && lot.status === 'closed' ? lot.soldToPaddle : undefined}
+        soldPaddle={account?.role === 'admin' && lot.status === 'closed' && 'soldToPaddle' in lot ? lot.soldToPaddle : undefined}
       />
 
       {active && lot.secondsLeft != null && (
@@ -200,7 +201,7 @@ export function LotScreen({ id }: { id: string }) {
                 Realiza tu puja
               </span>
               <span className="text-[11px] font-semibold text-muted-foreground">
-                Mín &gt; ${formatUSD(lot.currentBid)}
+                Mín ${formatUSD(lot.currentBid + lot.minIncrement)}
               </span>
             </div>
             <BidGate lot={lot} size="lg" promptLogin />
@@ -212,7 +213,7 @@ export function LotScreen({ id }: { id: string }) {
             </span>
             <div>
               <p className={cn(eyebrow, 'text-muted-foreground')}>
-                {lot.buyerOutcome === 'won' ? 'Ganado por ti' : 'Vendido'}
+                {('buyerOutcome' in lot && lot.buyerOutcome === 'won') ? 'Ganado por ti' : 'Vendido'}
               </p>
               <p className="font-display text-xl font-bold tabular text-success sm:text-2xl">
                 ${formatUSD(lot.finalPrice ?? 0)}{' '}
@@ -267,7 +268,7 @@ export function LotScreen({ id }: { id: string }) {
 
           <div className={cn(panelSm, 'p-4')}>
             <span className={cn(eyebrow, 'text-muted-foreground')}>
-              {active ? 'Puja líder actual' : lot.status === 'closed' ? (lot.buyerOutcome === 'won' ? 'Ganado por ti' : 'Vendido') : 'Puja ganadora'}
+              {active ? 'Puja líder actual' : lot.status === 'closed' ? (('buyerOutcome' in lot && lot.buyerOutcome === 'won') ? 'Ganado por ti' : 'Vendido') : 'Puja ganadora'}
             </span>
             <p className="font-display text-2xl font-bold tabular text-success sm:text-3xl lg:text-4xl">
               ${formatUSD(displayedPrice(lot), { decimals: true })}

@@ -84,19 +84,17 @@ export function LotMiniRow({
 export function LotMobileList({ lots, publicView = false, returnTo }: { lots: Lot[]; publicView?: boolean; returnTo?: string }) {
   const [openId, setOpenId] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (openId && !lots.some((lot) => lot.id === openId)) setOpenId(null)
-  }, [lots, openId])
+  const visibleOpenId = lots.some((lot) => lot.id === openId) ? openId : null
 
   useEffect(() => {
-    if (!openId) return
-    document.getElementById(`lot-expand-${openId}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [openId])
+    if (!visibleOpenId) return
+    document.getElementById(`lot-expand-${visibleOpenId}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [visibleOpenId])
 
   return (
     <ul className="flex flex-col gap-1 rounded-3xl bg-surface/50 p-1.5">
       {lots.map((lot) => {
-        const open = lot.id === openId
+          const open = lot.id === visibleOpenId
         return (
           <li key={lot.id} className="flex flex-col gap-2">
             <LotMiniRow

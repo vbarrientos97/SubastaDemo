@@ -1,13 +1,10 @@
 'use client'
 
+import { safeInternalPath as safePath } from '@/lib/internal-path'
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from '@/components/auth/session-provider'
 import { buyerHomeAuctionId } from '@/lib/domain/auction'
-
-function safePath(path: string | null, fallback: string) {
-  return path?.startsWith('/') && !path.startsWith('//') ? path : fallback
-}
 
 export function LogicalBackGuard() {
   const pathname = usePathname()
@@ -57,7 +54,7 @@ export function LogicalBackGuard() {
     }
 
     function beforeNavigate(href: string) {
-      const event = new CustomEvent('app:before-navigation', { cancelable: true, detail: { href } })
+      const event = new CustomEvent('app:before-navigation', { cancelable: true, detail: { href, resume: () => router.replace(href) } })
       window.dispatchEvent(event)
       return event.defaultPrevented
     }

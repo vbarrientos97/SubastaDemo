@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { addFavoriteId, isFavorite, pruneFavoriteIds, toggleFavoriteId } from '@/lib/domain/favorites'
-import { buyerBidSections, buyerLotBorderTone, hasBidFromClient } from '@/lib/domain/buyer-bids'
+import { buyerBidSections as projectedSections, buyerLotBorderTone as projectedTone } from '@/lib/domain/buyer-bids'
+import { hasBidFromClient } from '@/lib/domain/buyer-identity'
+import { sanitizeLotForBuyer, sanitizeLotsForBuyer } from '@/lib/domain/buyer-lot'
 import { validateEvent } from '@/lib/domain/event'
 import { paginateLots, validateLot, type Lot } from '@/lib/domain/lot'
 import {
@@ -12,10 +14,15 @@ import {
   validateAuction,
   type Auction,
 } from '@/lib/domain/auction'
-import { migrateSessionState, type SessionState, type StoredSession } from '@/lib/application/session-repository'
+import { type SessionState } from '@/lib/application/session-repository'
+import { migrateSessionState, type StoredSession } from '@/lib/session/migrate'
 import { placeBid } from '@/lib/application/session'
 import { createSeed } from '@/lib/session/seed'
 import type { Account, Client } from '@/lib/domain/account'
+
+const buyerLotBorderTone = (lot: Lot, client: Client) => projectedTone(sanitizeLotForBuyer(lot, client))
+const buyerBidSections = (lots: Lot[], client: Client, auctionIds: string[], favorites: string[]) =>
+  projectedSections(sanitizeLotsForBuyer(lots, client), auctionIds, favorites)
 
 test('toggleFavoriteId adds and removes', () => {
   assert.deepEqual(toggleFavoriteId([], 'a'), ['a'])

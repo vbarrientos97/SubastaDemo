@@ -11,19 +11,19 @@ export function Countdown({
   seconds: number
   className?: string
 }) {
-  const [remaining, setRemaining] = useState(seconds)
+  const [clock, setClock] = useState({ seconds, remaining: seconds })
+  if (clock.seconds !== seconds) setClock({ seconds, remaining: seconds })
 
   useEffect(() => {
-    setRemaining(seconds)
     const id = setInterval(() => {
-      setRemaining((r) => (r <= 0 ? 0 : r - 1))
+      setClock((current) => ({ ...current, remaining: Math.max(0, current.remaining - 1) }))
     }, 1000)
     return () => clearInterval(id)
   }, [seconds])
 
   return (
     <span className={cn('tabular font-mono', className)}>
-      {formatDuration(remaining)}
+      {formatDuration(clock.remaining)}
     </span>
   )
 }

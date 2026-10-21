@@ -176,7 +176,7 @@ export function LotCard({ lot, compact = false, publicView = false, returnTo }: 
           <div className="flex flex-1 flex-col gap-3">
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
               <div className="min-w-0">
-                <span className={cn(eyebrow, 'block text-muted-foreground')}>{lot.buyerOutcome === 'won' ? 'Ganado por ti' : 'Vendido'}</span>
+                <span className={cn(eyebrow, 'block text-muted-foreground')}>{('buyerOutcome' in lot && lot.buyerOutcome === 'won') ? 'Ganado por ti' : 'Vendido'}</span>
                 <span className="font-display text-lg font-bold tabular text-success">
                   ${formatUSD(displayedPrice(lot))}{' '}
                   <span className="text-xs font-semibold text-muted-foreground">USD</span>

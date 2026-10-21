@@ -1,4 +1,5 @@
-import type { SessionState, StoredSession } from '@/lib/application/session-repository'
+import type { SessionState } from '@/lib/application/session-repository'
+import type { StoredSession } from '@/lib/session/migrate'
 import { lots as catalogLots } from '@/lib/data/auction'
 import { createSeed } from '@/lib/session/seed'
 import { OPEN_AUCTION_ID } from '@/lib/domain/auction'

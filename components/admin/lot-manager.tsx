@@ -1,10 +1,11 @@
 'use client'
 
 import { ArrowLeft, ChevronDown, Pencil, Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { DeleteButton } from '@/components/admin/delete-button'
 import { MobileFormModal } from '@/components/admin/mobile-form-modal'
 import { useSession } from '@/components/auth/session-provider'
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
 import { useEntityEditor } from '@/hooks/use-entity-editor'
 import { displayedPrice, formatLotBirthDate, lotBirthDateInputValue, LOT_COLORS, statusLabel, type Lot, type LotCategory, type LotColor, type LotStatus } from '@/lib/domain/lot'
 import { btnPrimary, btnPrimaryMotion, eyebrow, field, panel, selectField } from '@/lib/styles'
@@ -50,15 +51,7 @@ export function LotManager({ auctionId }: { auctionId: string }) {
   } = useEntityEditor(empty)
 
   const hasUnsavedDraft = formOpen && JSON.stringify(draft) !== initialDraft
-  useEffect(() => {
-    if (!hasUnsavedDraft) return
-    const interceptNavigation = (event: Event) => {
-      event.preventDefault()
-      setConfirmLeave(true)
-    }
-    window.addEventListener('app:before-navigation', interceptNavigation)
-    return () => window.removeEventListener('app:before-navigation', interceptNavigation)
-  }, [hasUnsavedDraft])
+  const navigation = useUnsavedChanges(hasUnsavedDraft, () => setConfirmLeave(true))
 
   if (!state) return null
   const lots = state.lots.filter((lot) => lot.auctionId === auctionId).slice().sort((a, b) => a.order - b.order)
@@ -127,6 +120,7 @@ export function LotManager({ auctionId }: { auctionId: string }) {
       if (addAnother) {
         startCreate()
         setDraft({ ...empty, seller: draft.seller })
+        setInitialDraft(JSON.stringify({ ...empty, seller: draft.seller }))
         setDetailsOpen(false)
         setSuccessMessage(`Lote ${nextLotOrder} agregado · Siguiente: ${nextLotOrder + 1}`)
       } else {
@@ -168,8 +162,8 @@ export function LotManager({ auctionId }: { auctionId: string }) {
             <section role="alertdialog" aria-label="Confirmar salida" className="rounded-2xl border border-warning/40 bg-warning/10 p-4">
               <p className="font-semibold text-foreground">¿Salir sin guardar?</p>
               <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <button type="button" onClick={() => setConfirmLeave(false)} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-foreground hover:bg-accent">Seguir editando</button>
-                <button type="button" onClick={() => { setConfirmLeave(false); reset() }} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Salir</button>
+                <button type="button" onClick={() => { navigation.cancelNavigation(); setConfirmLeave(false) }} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-foreground hover:bg-accent">Seguir editando</button>
+                <button type="button" onClick={() => { setConfirmLeave(false); reset(); navigation.discardAndContinue(() => {}) }} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Salir</button>
               </div>
             </section>
           ) : null}

@@ -8,8 +8,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from '@/components/auth/session-provider'
 import { AccountDrawerSection } from '@/components/account/profile-menu'
 import { useDemoNotifications } from '@/components/notifications/use-demo-notifications'
-import { unreadNotificationBadge } from '@/lib/application/notifications'
+import { unreadNotificationBadge } from '@/lib/notifications/demo'
 import { BrandMark } from '@/components/layout/brand-mark'
+import { requestNavigation } from '@/lib/before-navigation'
 import { cn } from '@/lib/utils'
 import { mobileMenuTrigger } from '@/lib/styles'
 
@@ -25,7 +26,8 @@ export function MainMenuDrawer({ floating = false }: { floating?: boolean }) {
   const menuRef = useRef<HTMLElement>(null)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
 
-  useEffect(() => setOpen(false), [pathname])
+  const [previousPath, setPreviousPath] = useState(pathname)
+  if (previousPath !== pathname) { setPreviousPath(pathname); setOpen(false) }
 
   const closeMenu = useCallback((afterClose?: () => void) => {
     if (window.history.state?.mainMenuDrawer) {
@@ -40,6 +42,7 @@ export function MainMenuDrawer({ floating = false }: { floating?: boolean }) {
   useEffect(() => {
     if (!open) return
     const previousOverflow = document.body.style.overflow
+    const trigger = triggerRef.current
     document.body.style.overflow = 'hidden'
     window.history.pushState({ ...window.history.state, mainMenuDrawer: true }, '', window.location.href)
     closeRef.current?.focus()
@@ -75,7 +78,7 @@ export function MainMenuDrawer({ floating = false }: { floating?: boolean }) {
       document.removeEventListener('keydown', onKey)
       window.removeEventListener('popstate', onPopState)
       document.body.style.overflow = previousOverflow
-      triggerRef.current?.focus()
+      trigger?.focus()
     }
   }, [closeMenu, open])
 
@@ -84,10 +87,10 @@ export function MainMenuDrawer({ floating = false }: { floating?: boolean }) {
     if (target.closest('[data-menu-sign-out]')) {
       event.preventDefault()
       event.stopPropagation()
-      closeMenu(() => {
+      requestNavigation('/entrar', () => closeMenu(() => {
         signOut()
         router.push('/entrar')
-      })
+      }))
       return
     }
     const anchor = target.closest<HTMLAnchorElement>('a[href^="/"]')

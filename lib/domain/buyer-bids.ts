@@ -1,75 +1,36 @@
-import type { Client } from '@/lib/domain/account'
-import { isActiveLot, type Lot } from '@/lib/domain/lot'
-
-function wasWonByClient(lot: Lot, client: Client) {
-  if (lot.winnerClientId) return lot.winnerClientId === client.id
-  const clientPaddle = Number.parseInt(client.paddle.replace(/\D/g, ''), 10)
-  return Number.isFinite(clientPaddle) && clientPaddle === lot.soldToPaddle
-}
+import type { BuyerLot } from '@/lib/domain/buyer-lot'
+import { isActiveLot } from '@/lib/domain/lot'
 
 export type BuyerBidSections = {
-  active: Lot[]
-  following: Lot[]
-  won: Lot[]
-  finished: Lot[]
+  active: BuyerLot[]
+  following: BuyerLot[]
+  won: BuyerLot[]
+  finished: BuyerLot[]
 }
 
 export type BuyerLotBorderTone = 'neutral' | 'green' | 'orange' | 'red'
 
-export function hasBidFromClient(lot: Lot, client: Client) {
-  const normalizedName = client.name.trim().toLocaleLowerCase()
-  return (lot.bids ?? []).some((bid) =>
-    bid.bidderClientId
-      ? bid.bidderClientId === client.id
-      : bid.bidder.trim().toLocaleLowerCase() === normalizedName,
-  )
-}
-
-export function isLeadingForClient(lot: Lot, client: Client) {
-  if (lot.leaderClientId) return lot.leaderClientId === client.id
-  return lot.leader?.trim().toLocaleLowerCase() === client.name.trim().toLocaleLowerCase()
-}
-
-export function buyerLotBorderTone(lot: Lot, client: Client): BuyerLotBorderTone {
-  if (lot.status === 'closed') return wasWonByClient(lot, client) ? 'green' : 'red'
-  if (!isActiveLot(lot) || !hasBidFromClient(lot, client)) return 'neutral'
+export function buyerLotBorderTone(lot: BuyerLot): BuyerLotBorderTone {
+  if (lot.status === 'closed') return lot.buyerOutcome === 'won' ? 'green' : 'red'
+  if (!isActiveLot(lot) || !lot.hasOwnBid) return 'neutral'
   if (lot.status === 'imminent' || (lot.secondsLeft != null && lot.secondsLeft <= 10)) return 'red'
-  return isLeadingForClient(lot, client) ? 'green' : 'orange'
+  return lot.isOwnLeader ? 'green' : 'orange'
 }
 
 export function buyerBidSections(
-  lots: Lot[],
-  client: Client,
+  lots: BuyerLot[],
   associatedAuctionIds: string[],
   favoriteLotIds: string[],
 ): BuyerBidSections {
   const auctions = new Set(associatedAuctionIds)
   const favorites = new Set(favoriteLotIds)
-  const associatedLots = lots.filter((lot) => auctions.has(lot.auctionId))
-  const ownBids = new Set(associatedLots.filter((lot) => hasBidFromClient(lot, client)).map((lot) => lot.id))
-  const won = new Set(
-    associatedLots
-      .filter((lot) => lot.status === 'closed' && wasWonByClient(lot, client))
-      .map((lot) => lot.id),
-  )
-  const byOrder = (left: Lot, right: Lot) => left.order - right.order
-
+  const associated = lots.filter((lot) => auctions.has(lot.auctionId))
+  const byOrder = (a: BuyerLot, b: BuyerLot) => a.order - b.order
   return {
-    active: associatedLots
-      .filter((lot) => ownBids.has(lot.id) && isActiveLot(lot))
-      .sort(byOrder),
-    following: associatedLots
-      .filter(
-        (lot) =>
-          favorites.has(lot.id) &&
-          !ownBids.has(lot.id) &&
-          !won.has(lot.id) &&
-          (isActiveLot(lot) || lot.status === 'upcoming'),
-      )
-      .sort(byOrder),
-    won: associatedLots.filter((lot) => won.has(lot.id)).sort(byOrder),
-    finished: associatedLots
-      .filter((lot) => ownBids.has(lot.id) && lot.status === 'closed' && !won.has(lot.id))
-      .sort(byOrder),
+    active: associated.filter((lot) => lot.hasOwnBid && isActiveLot(lot)).sort(byOrder),
+    following: associated.filter((lot) => favorites.has(lot.id) && !lot.hasOwnBid &&
+      lot.buyerOutcome !== 'won' && (isActiveLot(lot) || lot.status === 'upcoming')).sort(byOrder),
+    won: associated.filter((lot) => lot.status === 'closed' && lot.buyerOutcome === 'won').sort(byOrder),
+    finished: associated.filter((lot) => lot.hasOwnBid && lot.status === 'closed' && lot.buyerOutcome !== 'won').sort(byOrder),
   }
 }

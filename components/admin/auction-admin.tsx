@@ -1,26 +1,26 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useSyncExternalStore, useRef, useState } from 'react'
+import { subscribePreferences } from '@/lib/browser-preferences'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Plus, Pencil, Trash2, ArrowRight, ArrowLeft, RefreshCw, CircleCheck, CircleAlert, SlidersHorizontal } from 'lucide-react'
 import { useSession } from '@/components/auth/session-provider'
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
 import { useEntityEditor } from '@/hooks/use-entity-editor'
 import { DeleteButton } from '@/components/admin/delete-button'
 import { MobileFormModal } from '@/components/admin/mobile-form-modal'
-import { auctionSyncService } from '@/lib/application/auction-sync-service'
+import { auctionSyncService } from '@/lib/demo/auction-sync'
 import {
   auctionStatusActions,
-  auctionStatusBadgeColor,
-  auctionStatusColor,
   auctionStatusLabel,
   type Auction,
   type AuctionInput,
   type AuctionStatus,
 } from '@/lib/domain/auction'
+import { auctionStatusBadgeColor, auctionStatusColor } from '@/components/auction/auction-status-style'
 import { btnPrimary, btnPrimaryMotion, eyebrow, field, filterTriggerClass, panel } from '@/lib/styles'
 import { cn } from '@/lib/utils'
-import { BackLink } from '@/components/layout/back-link'
 import { AuctionDateFilter, type DateRange } from '@/components/admin/auction-date-filter'
 
 const empty = {
@@ -55,15 +55,7 @@ export function AuctionAdminList() {
   } = useEntityEditor(empty)
 
   const hasUnsavedNewAuction = formOpen && Object.keys(empty).some((key) => draft[key as keyof typeof empty] !== empty[key as keyof typeof empty])
-  useEffect(() => {
-    if (!hasUnsavedNewAuction) return
-    const interceptNavigation = (event: Event) => {
-      event.preventDefault()
-      setConfirmCreateLeave(true)
-    }
-    window.addEventListener('app:before-navigation', interceptNavigation)
-    return () => window.removeEventListener('app:before-navigation', interceptNavigation)
-  }, [hasUnsavedNewAuction])
+  const creationNavigation = useUnsavedChanges(hasUnsavedNewAuction, () => setConfirmCreateLeave(true))
 
   if (!state) return null
 
@@ -157,8 +149,8 @@ export function AuctionAdminList() {
             <section role="alertdialog" aria-label="Confirmar salida" className="rounded-2xl border border-warning/40 bg-warning/10 p-4">
               <p className="font-semibold text-foreground">¿Salir sin guardar?</p>
               <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <button type="button" onClick={() => setConfirmCreateLeave(false)} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-foreground hover:bg-accent">Seguir editando</button>
-                <button type="button" onClick={() => { setConfirmCreateLeave(false); reset() }} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Salir</button>
+                <button type="button" onClick={() => { creationNavigation.cancelNavigation(); setConfirmCreateLeave(false) }} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-foreground hover:bg-accent">Seguir editando</button>
+                <button type="button" onClick={() => { setConfirmCreateLeave(false); reset(); creationNavigation.discardAndContinue(() => {}) }} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Salir</button>
               </div>
             </section>
           ) : null}
@@ -339,15 +331,11 @@ export function AuctionEditor({ auction }: { auction: Auction }) {
   const [confirmSync, setConfirmSync] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
+  const lastSyncedAt = useSyncExternalStore(subscribePreferences, () => auctionSyncService.getLastSyncedAt(auction.id), () => null)
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [pendingStatusAction, setPendingStatusAction] = useState<AuctionStatus | null>(null)
   const [statusActionError, setStatusActionError] = useState<string | null>(null)
   const syncingRef = useRef(false)
-
-  useEffect(() => {
-    setLastSyncedAt(auctionSyncService.getLastSyncedAt(auction.id))
-  }, [auction.id])
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -375,23 +363,7 @@ export function AuctionEditor({ auction }: { auction: Auction }) {
     } as typeof draft)[key as keyof typeof draft],
   )
 
-  useEffect(() => {
-    if (!hasUnsavedChanges) return
-    const handleInAppNavigation = (event: Event) => {
-      event.preventDefault()
-      setConfirmLeave(true)
-    }
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    window.addEventListener('app:before-navigation', handleInAppNavigation)
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => {
-      window.removeEventListener('app:before-navigation', handleInAppNavigation)
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-    }
-  }, [hasUnsavedChanges])
+  const editorNavigation = useUnsavedChanges(hasUnsavedChanges, () => setConfirmLeave(true))
 
   function goBack() {
     if (hasUnsavedChanges) setConfirmLeave(true)
@@ -409,8 +381,7 @@ export function AuctionEditor({ auction }: { auction: Auction }) {
       await auctionSyncService.synchronize({ auction: { ...auction, ...draft, status: auction.status }, lots })
       const timestamp = new Date().toISOString()
       auctionSyncService.saveLastSyncedAt(auction.id, timestamp)
-      setLastSyncedAt(timestamp)
-      setSyncMessage({ type: 'success', text: 'Subasta sincronizada correctamente.' })
+      setSyncMessage({ type: 'success', text: 'Simulación de sincronización completada.' })
     } catch (syncError) {
       setSyncMessage({
         type: 'error',
@@ -450,8 +421,8 @@ export function AuctionEditor({ auction }: { auction: Auction }) {
         <section role="alertdialog" aria-label="Confirmar salida" className="rounded-2xl border border-warning/40 bg-warning/10 p-4">
           <p className="font-semibold text-foreground">¿Salir sin guardar?</p>
           <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={() => setConfirmLeave(false)} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-foreground hover:bg-accent">Seguir editando</button>
-            <button type="button" onClick={() => router.replace('/admin')} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Salir</button>
+            <button type="button" onClick={() => { editorNavigation.cancelNavigation(); setConfirmLeave(false) }} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-foreground hover:bg-accent">Seguir editando</button>
+            <button type="button" onClick={() => { setConfirmLeave(false); editorNavigation.discardAndContinue(() => router.replace('/admin')) }} className="min-h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Salir</button>
           </div>
         </section>
       ) : null}
@@ -488,8 +459,8 @@ export function AuctionEditor({ auction }: { auction: Auction }) {
       {error ? <p className="text-sm font-medium text-primary">{error}</p> : null}
       {confirmSync ? (
         <section role="dialog" aria-label="Confirmar sincronización" className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
-          <h2 className="font-semibold text-foreground">¿Sincronizar esta subasta?</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Se enviarán los datos de “{draft.title || 'esta subasta'}” al sistema de subasta en vivo.</p>
+          <h2 className="font-semibold text-foreground">¿Simular la sincronización de esta subasta?</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Se registrará la simulación de “{draft.title || 'esta subasta'}” en este navegador. No se enviarán datos a un sistema externo.</p>
           <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setConfirmSync(false)} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-muted-foreground hover:bg-accent">Cancelar</button>
             <button type="button" disabled={syncing} onClick={synchronizeAuction} className={cn(btnPrimary, 'min-h-11 disabled:cursor-wait disabled:opacity-60')}>

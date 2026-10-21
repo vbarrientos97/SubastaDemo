@@ -1,5 +1,12 @@
 pmOnFail: ignore
 
+allowBuilds:
+  unrs-resolver: true
+
+# Security patch within minimatch's ^5.0.5 range; remove once upstream resolution advances.
+overrides:
+  brace-expansion@5.0.6: 5.0.12
+
 minimumReleaseAgeExclude:
   - '@next/*'
   - next

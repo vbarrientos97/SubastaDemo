@@ -1,5 +1,6 @@
 'use client'
 
+import { safeInternalPath as safeNext } from '@/lib/internal-path'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -8,11 +9,6 @@ import { regions } from '@/lib/domain/region'
 import { btnPrimary, btnPrimaryMotion, eyebrow, field, panel, selectField } from '@/lib/styles'
 import { cn } from '@/lib/utils'
 import { BackLink } from '@/components/layout/back-link'
-
-function safeNext(value: string | null) {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/'
-  return value
-}
 
 export function SignUpForm() {
   const { register } = useSession()

@@ -1,4 +1,7 @@
-import type { RegionInk } from '@/lib/domain/region'
+import type { RegionId } from '@/lib/domain/region'
+
+export type RegionInk = 'green' | 'red' | 'blue' | 'black'
+export const regionInk: Record<RegionId, RegionInk> = { boqueron: 'green', azuero: 'red', torti: 'blue', cocle: 'black' }
 
 export const regionInkClass: Record<RegionInk, string> = {
   green: 'text-success dark:text-emerald-400',

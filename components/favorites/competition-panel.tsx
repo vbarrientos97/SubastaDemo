@@ -76,7 +76,7 @@ function ClosedRace({ lot }: { lot: Lot }) {
         <h3 className="mt-1 font-display text-lg font-bold text-foreground">Ya se adjudicó</h3>
       </div>
       <p className="text-sm text-muted-foreground">
-        {lot.buyerOutcome === 'won' ? 'Ganado por ti en ' : 'Vendido en '}
+        {('buyerOutcome' in lot && lot.buyerOutcome === 'won') ? 'Ganado por ti en ' : 'Vendido en '}
         <span className="font-semibold text-success">${formatUSD(lot.finalPrice ?? lot.currentBid)}</span>.
       </p>
     </aside>

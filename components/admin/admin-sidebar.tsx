@@ -38,11 +38,13 @@ export function AdminSidebar() {
   const triggerRef = useRef<HTMLButtonElement>(null)
   const drawerRef = useRef<HTMLElement>(null)
 
-  useEffect(() => setMobileOpen(false), [pathname])
+  const [previousPath, setPreviousPath] = useState(pathname)
+  if (previousPath !== pathname) { setPreviousPath(pathname); setMobileOpen(false) }
 
   useEffect(() => {
     if (!mobileOpen) return
     const previousOverflow = document.body.style.overflow
+    const trigger = triggerRef.current
     document.body.style.overflow = 'hidden'
     closeButtonRef.current?.focus()
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -67,7 +69,7 @@ export function AdminSidebar() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = previousOverflow
-      triggerRef.current?.focus()
+      trigger?.focus()
     }
   }, [mobileOpen])
 

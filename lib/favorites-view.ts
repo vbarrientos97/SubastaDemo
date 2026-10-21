@@ -9,7 +9,8 @@ export function parseFavoritesView(value: string | null | undefined): FavoritesV
 export function readFavoritesViewCookie(): FavoritesView {
   if (typeof document === 'undefined') return 'columns'
   const match = document.cookie.match(/(?:^|; )favoritos\.vista=([^;]*)/)
-  return parseFavoritesView(match?.[1] ? decodeURIComponent(match[1]) : null)
+  try { return parseFavoritesView(match?.[1] ? decodeURIComponent(match[1]) : null) }
+  catch { return 'columns' }
 }
 
 export function writeFavoritesViewCookie(view: FavoritesView) {

@@ -3,7 +3,7 @@ import test from 'node:test'
 import { createLocalStorageSession } from '@/lib/session/local-storage'
 import { createSeed } from '@/lib/session/seed'
 import { isStoredSession } from '@/lib/session/validate-storage'
-import { migrateSessionState, SESSION_SCHEMA_VERSION } from '@/lib/application/session-repository'
+import { migrateSessionState, SESSION_SCHEMA_VERSION } from '@/lib/session/migrate'
 import { deleteLot, deleteAuction } from '@/lib/application/session'
 
 function browser(run: (store: Map<string, string>) => void, fail = false) {
@@ -103,4 +103,30 @@ test('historical migrations run once and produce a stable current snapshot', () 
   repo.save(first)
   assert.equal(deleteLot(repo, 'lote-02').ok, true)
   assert.ok(!repo.load()!.lots.some((lot) => lot.id === 'lote-02'))
+}))
+
+test('current lots reject invalid catalog flags and colors, while historical colors can migrate', () => {
+  const state = createSeed()
+  assert.equal(isStoredSession({ ...state, lots: [{ ...state.lots[0], inCatalog: 'false' }] }), false)
+  assert.equal(isStoredSession({ ...state, lots: [{ ...state.lots[0], color: 'INVALID' }] }), false)
+  assert.equal(isStoredSession({ ...state, schemaVersion: 17, lots: [{ ...state.lots[0], color: 'INVALID' }] }), true)
+})
+
+test('loading repairs duplicate ids and dangling references without restoring deleted entities', () => browser((store) => {
+  const state = createSeed()
+  state.currentUserId = 'acc-carlos'
+  state.auctions[0].clientIds.push('missing', state.auctions[0].clientIds[0])
+  state.lots.push({ ...state.lots[0], auctionId: 'missing', id: 'orphan' }, { ...state.lots[0] })
+  state.favoritesByAccount = { 'acc-carlos': ['lote-02', 'missing', 'lote-02'], missing: ['lote-02'] }
+  state.events.push({ id: 'orphan-event', typeId: 'other', title: 'X', startsAt: '2099-01-01', lotId: 'missing' })
+  state.pendingFavoriteLotId = 'missing'
+  store.set('subasta.session', JSON.stringify(state))
+  const loaded = createLocalStorageSession().load()!
+  assert.equal(loaded.lots.filter((row) => row.id === state.lots[0].id).length, 1)
+  assert.equal(loaded.lots.some((row) => row.id === 'orphan'), false)
+  assert.equal(loaded.auctions[0].clientIds.includes('missing'), false)
+  assert.deepEqual(loaded.favoriteLotIds, ['lote-02'])
+  assert.equal(loaded.favoritesByAccount?.missing, undefined)
+  assert.equal(loaded.events.find((row) => row.id === 'orphan-event')?.lotId, undefined)
+  assert.equal(loaded.pendingFavoriteLotId, null)
 }))

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { usePathname } from 'next/navigation'
 import { LogOut, Settings } from 'lucide-react'
 import { useSession } from '@/components/auth/session-provider'
+import { requestNavigation } from '@/lib/before-navigation'
 import { cn } from '@/lib/utils'
 
 export function AccountDrawerSection({ onNavigate, collapsed = false }: { onNavigate: () => void; collapsed?: boolean }) {
@@ -38,9 +39,11 @@ export function AccountDrawerSection({ onNavigate, collapsed = false }: { onNavi
         type="button"
         data-menu-sign-out
         onClick={() => {
-          onNavigate()
-          signOut()
-          router.push('/entrar')
+          requestNavigation('/entrar', () => {
+            onNavigate()
+            signOut()
+            router.push('/entrar')
+          })
         }}
         title={collapsed ? 'Cerrar sesión' : undefined}
         className={cn('flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-primary hover:bg-accent', collapsed && 'justify-center px-0')}

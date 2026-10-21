@@ -9,7 +9,7 @@ import { regions } from '@/lib/domain/region'
 import { formatUSD } from '@/lib/format'
 import { eyebrow, panel } from '@/lib/styles'
 import { cn } from '@/lib/utils'
-import { regionInkClass, regionSwatchClass } from '@/components/admin/region-ink'
+import { regionInk, regionInkClass, regionSwatchClass } from '@/components/admin/region-ink'
 
 export function AuctionReports({ auctionId, title }: { auctionId: string; title: string }) {
   const { state } = useSession()
@@ -104,7 +104,7 @@ export function AuctionReports({ auctionId, title }: { auctionId: string; title:
               <div className="flex flex-col gap-5">
                 {groups.map((group) => {
                   const percentage = maxZoneSales > 0 ? (group.total / maxZoneSales) * 100 : 0
-                  const ink = group.region?.ink
+                  const ink = group.region ? regionInk[group.region.id] : undefined
                   return (
                     <div key={group.id}>
                       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -156,7 +156,7 @@ export function AuctionReports({ auctionId, title }: { auctionId: string; title:
               <details key={group.id} className={cn(panel, 'group overflow-hidden')}>
                 <summary className="flex list-none cursor-pointer items-center justify-between gap-3 bg-surface-2/60 px-4 py-3 marker:hidden transition hover:bg-accent/60 sm:px-5 [&::-webkit-details-marker]:hidden">
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', group.region ? regionSwatchClass[group.region.ink] : 'bg-primary')} />
+                    <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', group.region ? regionSwatchClass[regionInk[group.region.id]] : 'bg-primary')} />
                     <h3 className="truncate font-display text-base font-bold text-foreground">{group.name}</h3>
                     <span className="rounded-full bg-background px-2 py-0.5 text-xs font-semibold text-muted-foreground">{group.lots.length}</span>
                   </div>

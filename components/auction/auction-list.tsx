@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { auctionStatusBadgeColor, auctionStatusLabel, type Auction } from '@/lib/domain/auction'
+import { auctionStatusLabel, type Auction } from '@/lib/domain/auction'
+import { auctionStatusBadgeColor } from '@/components/auction/auction-status-style'
 import { panel } from '@/lib/styles'
 import { cn } from '@/lib/utils'
 

@@ -1,15 +1,11 @@
 'use client'
 
+import { safeInternalPath as safeNext } from '@/lib/internal-path'
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { User } from 'lucide-react'
 import { useSession } from '@/components/auth/session-provider'
 import { BackLink } from '@/components/layout/back-link'
-
-function safeNext(value: string | null) {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/'
-  return value
-}
 
 const inputClass =
   'h-[52px] w-full rounded-full border bg-field pr-5 pl-12 text-[15px] font-normal text-foreground outline-none placeholder:text-muted-foreground border-border focus-visible:border-ring dark:border-[#8d7b4a] dark:bg-[#141816] dark:text-white dark:placeholder:text-[#8e968e] focus-visible:dark:border-[#d4c48a]'

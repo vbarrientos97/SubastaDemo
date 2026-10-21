@@ -215,7 +215,7 @@ export function Catalog({
         }),
         sort,
       ),
-    [scoped, query, sex, color, minPrice, maxPrice, sort],
+    [scoped, query, sex, color, minPrice, maxPrice, sort, publicView],
   )
   const paged = useMemo(() => paginateLots(filtered, page, PAGE_SIZE), [filtered, page])
   const returnTo = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ''}`

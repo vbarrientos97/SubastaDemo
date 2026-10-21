@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Gavel, Plus, Check } from 'lucide-react'
+import { validateBidAmount } from '@/lib/domain/lot'
 import { formatUSD } from '@/lib/format'
 import { btnPrimary, btnPrimaryMotion } from '@/lib/styles'
 import { cn } from '@/lib/utils'
@@ -17,27 +18,28 @@ export function BidBox({
   size?: 'md' | 'lg'
   onPlace: (amount: number) => string | null
 }) {
-  const [bid, setBid] = useState(currentBid)
-  const [custom, setCustom] = useState<string>(String(currentBid + minIncrement))
+  const [custom, setCustom] = useState('')
   const [justPlaced, setJustPlaced] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const nextQuick = bid + minIncrement
+  const timer = useRef<number | null>(null)
+  const nextQuick = currentBid + minIncrement
   const parsedCustom = Number.parseInt(custom.replace(/\D/g, ''), 10)
-  const isCustomValid = Number.isFinite(parsedCustom) && parsedCustom > bid
+  const amount = custom ? parsedCustom : nextQuick
+  const amountError = validateBidAmount({ currentBid, minIncrement }, amount)
 
   useEffect(() => {
-    setBid(currentBid)
-    setCustom(String(currentBid + minIncrement))
-  }, [currentBid, minIncrement])
+    return () => { if (timer.current !== null) window.clearTimeout(timer.current) }
+  }, [])
 
   function place(amount: number) {
-    if (amount <= currentBid) return
-    const message = onPlace(amount)
+    const message = validateBidAmount({ currentBid, minIncrement }, amount) ?? onPlace(amount)
     setError(message)
     if (message) return
     setJustPlaced(true)
-    window.setTimeout(() => setJustPlaced(false), 1800)
+    setCustom('')
+    if (timer.current !== null) window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setJustPlaced(false), 1800)
   }
 
   const lg = size === 'lg'
@@ -75,9 +77,11 @@ export function BidBox({
               <span className="text-base font-bold leading-6 text-muted-foreground">$</span>
               <input
                 inputMode="numeric"
+                placeholder={String(nextQuick)}
+                aria-invalid={!!custom && !!amountError}
                 value={custom ? Number(custom.replace(/\D/g, '')).toLocaleString('en-US') : ''}
                 onChange={(e) => setCustom(e.target.value.replace(/\D/g, ''))}
-                className="h-6 w-full border-0 bg-transparent p-0 text-base font-bold leading-6 tabular text-foreground outline-none"
+                className="h-6 w-full border-0 bg-transparent p-0 text-base font-bold leading-6 tabular text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 aria-label="Ingresar otro monto de puja"
               />
             </span>
@@ -87,7 +91,7 @@ export function BidBox({
 
       <button
         type="button"
-        onClick={() => place(isCustomValid ? parsedCustom : nextQuick)}
+        onClick={() => place(amount)}
         className={cn(
           btnPrimary,
           btnPrimaryMotion,
@@ -105,7 +109,7 @@ export function BidBox({
             <Gavel className={cn(lg ? 'h-5 w-5' : 'h-4 w-4')} />
             <span>Pujar ahora</span>
             <span className="tabular">
-              · ${formatUSD(isCustomValid ? parsedCustom : nextQuick)}
+              · ${formatUSD(amount)}
             </span>
           </>
         )}

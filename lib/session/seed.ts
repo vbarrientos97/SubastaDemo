@@ -1,10 +1,12 @@
+import { demoLotBirthDate } from '@/lib/session/demo-lot'
 import { lots as catalogLots, auction } from '@/lib/data/auction'
 import type { Client } from '@/lib/domain/account'
 import { OPEN_AUCTION_ID, type Auction } from '@/lib/domain/auction'
 import type { AuctionEvent } from '@/lib/domain/event'
-import { demoLotBirthDate, LOT_COLORS, type Lot, type LotCategory } from '@/lib/domain/lot'
+import { LOT_COLORS, type Lot, type LotCategory } from '@/lib/domain/lot'
 import type { RegionId } from '@/lib/domain/region'
-import { SESSION_SCHEMA_VERSION, type SessionState } from '@/lib/application/session-repository'
+import { type SessionState } from '@/lib/application/session-repository'
+import { SESSION_SCHEMA_VERSION } from '@/lib/session/migrate'
 
 const buyers: { id: string; name: string; paddle: string; regionId: RegionId }[] = [
   { id: 'patrocinio', name: 'Patrocinio Romero', paddle: '11', regionId: 'boqueron' },

@@ -1,7 +1,9 @@
 'use client'
 
+import { writePreference } from '@/lib/browser-preferences'
+
 import { Moon, Sun } from 'lucide-react'
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react'
 import { cn } from '@/lib/utils'
 
 function subscribe(onStoreChange: () => void) {
@@ -19,7 +21,7 @@ function isDark() {
 
 function setTheme(dark: boolean) {
   document.documentElement.classList.toggle('dark', dark)
-  localStorage.setItem('theme', dark ? 'dark' : 'light')
+  writePreference('theme', dark ? 'dark' : 'light')
 }
 
 export function ThemeToggle({
@@ -29,10 +31,7 @@ export function ThemeToggle({
   className?: string
   compact?: boolean
 }) {
-  const storedDark = useSyncExternalStore(subscribe, isDark, () => true)
-  const [ready, setReady] = useState(false)
-  useEffect(() => setReady(true), [])
-  const dark = ready ? storedDark : true
+  const dark = useSyncExternalStore(subscribe, isDark, () => true)
 
   if (compact) {
     return (

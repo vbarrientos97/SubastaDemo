@@ -7,7 +7,7 @@ import { displayedPrice, type Lot } from '@/lib/domain/lot'
 import { regions } from '@/lib/domain/region'
 import { formatUSD } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { regionBoardInkClass, regionSwatchClass } from '@/components/admin/region-ink'
+import { regionInk, regionBoardInkClass, regionSwatchClass } from '@/components/admin/region-ink'
 
 const projectedColumns =
   'grid grid-cols-[4.25rem_5.75rem_minmax(13.5rem,1fr)] items-center gap-x-3 px-4'
@@ -38,6 +38,7 @@ export function BoardProjection({
   return (
     <div
       ref={boardRef}
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-label="Pizarra del remate"
@@ -75,10 +76,10 @@ export function BoardProjection({
               <span
                 className={cn(
                   'h-2.5 w-2.5 shrink-0 rounded-sm',
-                  region.ink === 'black' ? 'bg-neutral-950' : regionSwatchClass[region.ink],
+                  regionInk[region.id] === 'black' ? 'bg-neutral-950' : regionSwatchClass[regionInk[region.id]],
                 )}
               />
-              <span className={regionBoardInkClass[region.ink]}>{region.name}</span>
+              <span className={regionBoardInkClass[regionInk[region.id]]}>{region.name}</span>
             </li>
           ))}
         </ul>
@@ -142,7 +143,7 @@ function ProjectedLot({ lot, clients }: { lot: Lot; clients: Client[] }) {
       <span
         className={cn(
           'whitespace-nowrap text-[clamp(1rem,2.2vh,1.65rem)] font-semibold',
-          region ? regionBoardInkClass[region.ink] : 'text-muted-foreground dark:text-neutral-400',
+          region ? regionBoardInkClass[regionInk[region.id]] : 'text-muted-foreground dark:text-neutral-400',
         )}
       >
         {client?.name ?? ''}

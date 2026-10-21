@@ -1,14 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { BellRing, Check, Clock3, Gavel, Trophy } from 'lucide-react'
+import { BellRing, Clock3, Gavel, Trophy } from 'lucide-react'
 import { BuyerGuard } from '@/components/auth/buyer-guard'
 import { useDemoNotifications } from '@/components/notifications/use-demo-notifications'
 import { TopBar } from '@/components/layout/top-bar'
 import { BackLink } from '@/components/layout/back-link'
 import { panel } from '@/lib/styles'
 import { cn } from '@/lib/utils'
-import { demoNotificationText, relativeNotificationTime } from '@/lib/application/notifications'
+import { demoNotificationText, relativeNotificationTime } from '@/lib/notifications/demo'
 import { useSession } from '@/components/auth/session-provider'
 
 const iconByType = { outbid: Gavel, closing: Clock3, won: Trophy, sold: BellRing, 'auction-starting': BellRing }
@@ -61,5 +61,5 @@ function NotificationsContent() {
 }
 
 export default function NotificationsPage() {
-  return <BuyerGuard><NotificationsContent /></BuyerGuard>
+  return <BuyerGuard next="/notificaciones"><NotificationsContent /></BuyerGuard>
 }

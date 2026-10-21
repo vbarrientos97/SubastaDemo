@@ -1,8 +1,11 @@
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
 export function BrandMark({ className }: { className?: string }) {
   return (
-    <img
+    <Image
+      width={40}
+      height={40}
       src="/logo-mark.jpg"
       alt="Subasta Ganadera Panamá"
       className={cn(

@@ -1,16 +1,21 @@
 import { Suspense } from 'react'
+import Image from 'next/image'
 import { SignInBackLink, SignInForm } from '@/components/auth/sign-in-form'
 
 export default function EntrarPage() {
   return (
     <main className="fixed inset-0 z-40 overflow-y-auto bg-background dark:bg-[#08160f]">
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <img
+        <Image
+          fill
+          sizes="100vw"
           src="/login-art-light.jpg?v=3"
           alt=""
           className="h-full w-full object-cover object-left dark:hidden"
         />
-        <img
+        <Image
+          fill
+          sizes="100vw"
           src="/login-art.jpg"
           alt=""
           className="hidden h-full w-full object-cover object-left dark:block"

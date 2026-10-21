@@ -1,5 +1,5 @@
 import type { SessionRepository, SessionState } from '@/lib/application/session-repository'
-import { migrateSessionState, SESSION_SCHEMA_VERSION } from '@/lib/application/session-repository'
+import { migrateSessionState, normalizeSessionReferences, SESSION_SCHEMA_VERSION } from '@/lib/session/migrate'
 import { createSeed } from '@/lib/session/seed'
 import { upgradeLegacyDemo } from '@/lib/session/legacy-migrations'
 import { isStoredSession } from '@/lib/session/validate-storage'
@@ -30,7 +30,7 @@ export function createLocalStorageSession(): SessionRepository {
         if (raw) {
           const parsed: unknown = JSON.parse(raw)
           if (isStoredSession(parsed)) {
-            memory = upgradeLegacyDemo(parsed, migrateSessionState(parsed))
+            memory = normalizeSessionReferences(upgradeLegacyDemo(parsed, migrateSessionState(parsed)))
             if ((parsed.schemaVersion ?? 0) < SESSION_SCHEMA_VERSION) save(memory)
             return memory
           }

@@ -1,5 +1,6 @@
-import type { StoredSession } from '@/lib/application/session-repository'
+import type { StoredSession } from '@/lib/session/migrate'
 import { isRegionId } from '@/lib/domain/region'
+import { normalizeLotColor } from '@/lib/domain/lot'
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -32,13 +33,17 @@ function validEvent(row: Record<string, unknown>) {
     (!row.endsAt || (typeof row.endsAt === 'string' && Number.isFinite(Date.parse(row.endsAt))))
 }
 
-function validLot(row: Record<string, unknown>) {
+function validLot(row: Record<string, unknown>, legacy: boolean) {
   return hasStrings(row, ['id', 'title', 'registeredName', 'breed', 'image']) &&
-    optionalStrings(row, ['auctionId', 'color', 'birthDate', 'sire', 'dam', 'leader', 'leaderClientId', 'winnerClientId', 'youtubeUrl']) &&
+    optionalStrings(row, ['auctionId', 'color', 'birthDate', 'sire', 'dam', 'leader', 'leaderClientId', 'winnerClientId', 'youtubeUrl', 'seller', 'opensAtLabel', 'closesAtLabel']) &&
+    (legacy || (typeof row.auctionId === 'string' && !!row.auctionId)) &&
+    (row.inCatalog === undefined || typeof row.inCatalog === 'boolean') &&
+    (legacy || row.color === undefined || (typeof row.color === 'string' && normalizeLotColor(row.color) === row.color)) &&
     ['live', 'extended', 'imminent', 'closed', 'upcoming'].includes(String(row.status)) &&
     ['macho', 'hembra'].includes(String(row.category)) &&
-    ['order', 'currentBid', 'minIncrement', 'headCount', 'weightKg', 'pricePerKg'].every((key) => finite(row[key])) &&
-    (row.secondsLeft === null || finite(row.secondsLeft)) &&
+    ['order', 'currentBid', 'minIncrement', 'headCount', 'weightKg', 'pricePerKg'].every((key) => finite(row[key]) && Number(row[key]) >= 0) &&
+    Number(row.minIncrement) > 0 &&
+    (row.secondsLeft === null || (finite(row.secondsLeft) && Number(row.secondsLeft) >= 0)) &&
     ['finalPrice', 'soldToPaddle'].every((key) => row[key] == null || finite(row[key])) &&
     (row.images === undefined || strings(row.images)) &&
     (row.bids === undefined || rows(row.bids, (bid) => hasStrings(bid, ['bidder', 'date', 'time']) && finite(bid.amount) && optionalStrings(bid, ['bidderClientId'])))
@@ -57,7 +62,7 @@ export function isStoredSession(value: unknown): value is StoredSession {
     const legacy = value.auction
     if (!record(legacy) || !optionalStrings(legacy, ['title', 'location', 'dates', 'focus', 'closeLabel']) || ['totalLots', 'connected'].some((key) => legacy[key] != null && !finite(legacy[key]))) return false
   }
-  if (!rows(value.lots, validLot)) return false
+  if (!rows(value.lots, (row) => validLot(row, Number(value.schemaVersion ?? 0) < 18))) return false
   if (value.favoriteLotIds !== undefined && !strings(value.favoriteLotIds)) return false
   if (value.favoritesByAccount !== undefined && (!record(value.favoritesByAccount) || !Object.values(value.favoritesByAccount).every(strings))) return false
   if (value.events !== undefined && !rows(value.events, validEvent)) return false

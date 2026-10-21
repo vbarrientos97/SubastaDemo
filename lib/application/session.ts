@@ -25,7 +25,7 @@ import {
   type EventTypeId,
 } from '@/lib/domain/event'
 import { addFavoriteId, pruneFavoriteIds, toggleFavoriteId } from '@/lib/domain/favorites'
-import { isActiveLot, lotImages, normalizeLotColor, validateLot, type LotInput } from '@/lib/domain/lot'
+import { isActiveLot, validateBidAmount, lotImages, normalizeLotColor, validateLot, type LotInput } from '@/lib/domain/lot'
 import { isRegionId } from '@/lib/domain/region'
 import type { Result, SessionRepository, SessionState } from '@/lib/application/session-repository'
 
@@ -547,9 +547,8 @@ export function placeBid(repo: SessionRepository, lotId: string, amount: number)
     const access = bidAccess(currentAuction, account, client)
     if (!access.ok) return { ok: false, error: bidDenialMessage(access.reason) }
     if (!isActiveLot(lot) || lot.inCatalog === false) return { ok: false, error: 'Este lote no está habilitado para pujar.' }
-    if (!Number.isSafeInteger(amount) || amount <= lot.currentBid) {
-      return { ok: false, error: 'La puja debe superar la oferta actual.' }
-    }
+    const amountError = validateBidAmount(lot, amount)
+    if (amountError) return { ok: false, error: amountError }
     const now = new Date()
     const bidder = client?.name ?? account?.username ?? 'Comprador'
     const bid = {

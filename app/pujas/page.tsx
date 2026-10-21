@@ -2,14 +2,16 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowUpRight, Check, ChevronRight, Gavel, Heart, History } from 'lucide-react'
 import { BuyerGuard } from '@/components/auth/buyer-guard'
 import { useSession } from '@/components/auth/session-provider'
 import { BidGate } from '@/components/auction/bid-gate'
 import { Countdown } from '@/components/auction/countdown'
 import { buyerBidSections, buyerLotBorderTone, type BuyerBidSections } from '@/lib/domain/buyer-bids'
-import type { Client } from '@/lib/domain/account'
-import { formatLotBirthDate, isActiveLot, statusLabel, type Lot } from '@/lib/domain/lot'
+import type { BuyerLot } from '@/lib/domain/buyer-lot'
+
+import { formatLotBirthDate, isActiveLot, statusLabel } from '@/lib/domain/lot'
 import { formatUSD } from '@/lib/format'
 import { eyebrow, panel } from '@/lib/styles'
 import { cn } from '@/lib/utils'
@@ -58,7 +60,7 @@ function PujasContent() {
     )
   }
 
-  const sections = buyerBidSections(buyerLots, client, auctionId ? [auctionId] : [], favoriteLotIds)
+  const sections = buyerBidSections(buyerLots, auctionId ? [auctionId] : [], favoriteLotIds)
   const priorityLots = [...sections.active, ...sections.following, ...sections.won, ...sections.finished]
   const rawSelectedLot = priorityLots.find((lot) => lot.id === selectedLotId) ?? priorityLots[0] ?? null
   const selectedLot = rawSelectedLot ? buyerLots.find((lot) => lot.id === rawSelectedLot.id) ?? rawSelectedLot : null
@@ -83,7 +85,7 @@ function PujasContent() {
                 key={key}
                 sectionKey={key}
                 lots={sections[key]}
-                client={client}
+
                 selectedLotId={selectedLot?.id ?? null}
                 onSelect={setSelectedLotId}
               />
@@ -110,13 +112,11 @@ function PujasContent() {
 function BidSection({
   sectionKey,
   lots,
-  client,
   selectedLotId,
   onSelect,
 }: {
   sectionKey: SectionKey
-  lots: Lot[]
-  client: Client
+  lots: BuyerLot[]
   selectedLotId: string | null
   onSelect: (lotId: string) => void
 }) {
@@ -142,7 +142,7 @@ function BidSection({
               <BidLotRow
                 lot={lot}
                 sectionKey={sectionKey}
-                client={client}
+
                 selected={selectedLotId === lot.id}
                 onSelect={() => onSelect(lot.id)}
               />
@@ -157,18 +157,15 @@ function BidSection({
 function BidLotRow({
   lot,
   sectionKey,
-  client,
   selected,
   onSelect,
 }: {
-  lot: Lot
+  lot: BuyerLot
   sectionKey: SectionKey
-  client: Client
   selected: boolean
   onSelect: () => void
 }) {
-  const info = sectionInfo[sectionKey]
-  const borderTone = buyerLotBorderTone(lot, client)
+  const borderTone = buyerLotBorderTone(lot)
   const borderClass = borderTone === 'green'
     ? 'border-emerald-500 dark:border-emerald-400'
     : borderTone === 'orange'
@@ -198,7 +195,9 @@ function BidLotRow({
 
   const content = (
     <>
-      <img
+      <Image
+        width={72}
+        height={72}
         src={lot.image || '/cattle/certificate-example.svg'}
         alt=""
         className="h-16 w-16 shrink-0 rounded-xl border border-border bg-surface-2 object-cover sm:h-[4.5rem] sm:w-[4.5rem]"
@@ -247,7 +246,7 @@ function BidLotRow({
   )
 }
 
-function SelectedLotPanel({ lot, sectionKey }: { lot: Lot; sectionKey: SectionKey }) {
+function SelectedLotPanel({ lot, sectionKey }: { lot: BuyerLot; sectionKey: SectionKey }) {
   const auction = useSession().state?.auctions.find((item) => item.id === lot.auctionId)
   const canBidOnLot = isActiveLot(lot)
   const won = sectionKey === 'won'
@@ -256,7 +255,7 @@ function SelectedLotPanel({ lot, sectionKey }: { lot: Lot; sectionKey: SectionKe
     <section className={cn(panel, 'overflow-hidden')}>
       <div className="p-4">
         <div className="relative overflow-hidden rounded-2xl bg-surface-2">
-          <img src={lot.image || '/cattle/certificate-example.svg'} alt={lot.breed} className="aspect-[4/3] w-full object-cover" />
+          <Image src={lot.image || '/cattle/certificate-example.svg'} width={640} height={480} alt={lot.breed} className="aspect-[4/3] w-full object-cover" />
           <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-foreground backdrop-blur">
             {sectionInfo[sectionKey].title}
           </span>
@@ -303,7 +302,7 @@ function SelectedLotPanel({ lot, sectionKey }: { lot: Lot; sectionKey: SectionKe
 
 export default function PujasPage() {
   return (
-    <BuyerGuard>
+    <BuyerGuard next="/pujas">
       <PujasContent />
     </BuyerGuard>
   )

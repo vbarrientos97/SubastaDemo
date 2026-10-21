@@ -1,5 +1,7 @@
 'use client'
 
+import { readPreference, writePreference } from '@/lib/browser-preferences'
+
 import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { BellRing, Check, Clock3, Gavel, X } from 'lucide-react'
@@ -9,7 +11,7 @@ import {
   demoNotificationText,
   subscribeToCreatedDemoNotifications,
   type DemoNotification,
-} from '@/lib/application/notifications'
+} from '@/lib/notifications/demo'
 import { cn } from '@/lib/utils'
 import { isActiveLot } from '@/lib/domain/lot'
 
@@ -21,19 +23,23 @@ export function BuyerNotificationToasts() {
   const { ready, user, buyerLots } = useSession()
   const lotIdsKey = buyerLots.map((lot) => lot.id).join('|')
   const [visible, setVisible] = useState<DemoNotification[]>([])
-  const timers = useRef<number[]>([])
+  const timers = useRef(new Set<number>())
 
   useEffect(() => () => timers.current.forEach(window.clearTimeout), [])
 
   useEffect(() => {
+    if (!user) return
     const allowedLots = new Set(lotIdsKey ? lotIdsKey.split('|') : [])
-    return subscribeToCreatedDemoNotifications((notification) => {
-      if (!allowedLots.has(notification.lotId) || window.localStorage.getItem('subasta.aviso-puja') === 'false') return
+    return subscribeToCreatedDemoNotifications(user.id, (notification) => {
+      if (!allowedLots.has(notification.lotId) || readPreference('subasta.aviso-puja') === 'false') return
       setVisible((current) => [notification, ...current].slice(0, 2))
-      const timer = window.setTimeout(() => setVisible((current) => current.filter((item) => item.id !== notification.id)), 7000)
-      timers.current.push(timer)
+      const timer = window.setTimeout(() => {
+        timers.current.delete(timer)
+        setVisible((current) => current.filter((item) => item.id !== notification.id))
+      }, 7000)
+      timers.current.add(timer)
     })
-  }, [lotIdsKey])
+  }, [lotIdsKey, user])
 
   useEffect(() => {
     function onSettingChange(event: Event) {
@@ -45,14 +51,16 @@ export function BuyerNotificationToasts() {
 
   useEffect(() => {
     if (!ready || user?.role !== 'buyer' || !(pathname === '/' || pathname.startsWith('/subasta/'))) return
-    const demoKey = 'subasta.demo-alerta-inicial'
-    if (window.sessionStorage.getItem(demoKey)) return
-    window.sessionStorage.setItem(demoKey, 'true')
+    const demoKey = `subasta.demo-alerta-inicial.${user.id}`
+    if (readPreference(demoKey, true)) return
     const demoLot = buyerLots.find(isActiveLot) ?? buyerLots[0]
     if (!demoLot) return
-    const timer = window.setTimeout(() => createDemoNotification('outbid', demoLot.id, demoLot.order), 1800)
+    const timer = window.setTimeout(() => {
+      writePreference(demoKey, 'true', true)
+      createDemoNotification(user.id, 'outbid', demoLot.id, demoLot.order)
+    }, 1800)
     return () => window.clearTimeout(timer)
-  }, [pathname, ready, user?.role, lotIdsKey])
+  }, [pathname, ready, user, buyerLots])
 
   if (!ready || user?.role !== 'buyer' || visible.length === 0) return null
 

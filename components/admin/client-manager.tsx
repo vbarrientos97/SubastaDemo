@@ -12,6 +12,7 @@ export function ClientManager({ auctionId }: { auctionId: string }) {
   const { state, setAuctionClients } = useSession()
   const [associateOpen, setAssociateOpen] = useState(false)
   const [pendingId, setPendingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   if (!state) return null
   const auction = state.auctions.find((item) => item.id === auctionId) ?? null
@@ -21,29 +22,33 @@ export function ClientManager({ auctionId }: { auctionId: string }) {
   const available = state.clients.filter((client) => !current.clientIds.includes(client.id))
 
   function remove(clientId: string) {
-    setAuctionClients(
+    const message = setAuctionClients(
       current.id,
       current.clientIds.filter((id) => id !== clientId),
     )
-    setPendingId(null)
+    setError(message)
+    if (!message) setPendingId(null)
   }
 
   function associate(clientId: string) {
-    if (!clientId) return
-    setAuctionClients(current.id, [...current.clientIds, clientId])
+    if (!clientId) return 'Elige un cliente.'
+    return setAuctionClients(current.id, [...current.clientIds, clientId])
   }
 
   function submitAssociation(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
     const data = new FormData(form)
-    associate(String(data.get('clientId') ?? ''))
+    const message = associate(String(data.get('clientId') ?? ''))
+    setError(message)
+    if (message) return
     form.reset()
     setAssociateOpen(false)
   }
 
   return (
     <section className={cn(panel, 'overflow-hidden')}>
+      {error ? <p role="alert" className="p-4 text-sm text-destructive">{error}</p> : null}
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-4">
         <div>
           <h1 className="font-display text-xl font-bold text-foreground">Clientes asociados</h1>

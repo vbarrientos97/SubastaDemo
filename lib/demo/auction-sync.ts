@@ -1,15 +1,10 @@
 import type { Auction } from '@/lib/domain/auction'
 import type { Lot } from '@/lib/domain/lot'
+import { readPreference, writePreference } from '@/lib/browser-preferences'
 
 export type AuctionSyncPayload = {
   auction: Auction
   lots: Lot[]
-}
-
-export interface AuctionSyncService {
-  synchronize(payload: AuctionSyncPayload): Promise<void>
-  getLastSyncedAt(auctionId: string): string | null
-  saveLastSyncedAt(auctionId: string, timestamp: string): void
 }
 
 // Cambiar a true para probar localmente el mensaje de error.
@@ -22,8 +17,8 @@ const syncingAuctions = new Set<string>()
  * Demo only: reemplazar synchronize() por la integración real.
  * TODO producción: definir endpoint, mecanismo de autenticación y formato/versionado del payload.
  */
-export const auctionSyncService: AuctionSyncService = {
-  async synchronize({ auction, lots }) {
+export const auctionSyncService = {
+  async synchronize({ auction }: AuctionSyncPayload) {
     if (syncingAuctions.has(auction.id)) {
       throw new Error('La sincronización de esta subasta ya está en curso.')
     }
@@ -39,18 +34,10 @@ export const auctionSyncService: AuctionSyncService = {
       syncingAuctions.delete(auction.id)
     }
   },
-  getLastSyncedAt(auctionId) {
-    try {
-      return window.localStorage.getItem(`${SYNC_TIMESTAMP_KEY}${auctionId}`)
-    } catch {
-      return null
-    }
+  getLastSyncedAt(auctionId: string) {
+    return readPreference(`${SYNC_TIMESTAMP_KEY}${auctionId}`)
   },
-  saveLastSyncedAt(auctionId, timestamp) {
-    try {
-      window.localStorage.setItem(`${SYNC_TIMESTAMP_KEY}${auctionId}`, timestamp)
-    } catch {
-      // La sincronización mock funciona aunque el navegador no permita guardar el registro local.
-    }
+  saveLastSyncedAt(auctionId: string, timestamp: string) {
+    writePreference(`${SYNC_TIMESTAMP_KEY}${auctionId}`, timestamp)
   },
 }

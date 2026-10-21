@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useModalFocus } from '@/hooks/use-modal-focus'
 import { createPortal, flushSync } from 'react-dom'
 import Image from 'next/image'
 import { Maximize2, Search, X } from 'lucide-react'
@@ -16,12 +17,12 @@ import {
   type BoardQuery,
 } from '@/lib/domain/board'
 import { categoryLabel, displayedPrice, statusLabel, type Lot } from '@/lib/domain/lot'
-import { regions, type RegionInk } from '@/lib/domain/region'
+import { regions } from '@/lib/domain/region'
 import { formatKg, formatUSD } from '@/lib/format'
 import { caption, eyebrow, field, panel, panelSm } from '@/lib/styles'
 import { cn } from '@/lib/utils'
 import { useSession } from '@/components/auth/session-provider'
-import { regionChipClass, regionInkClass } from '@/components/admin/region-ink'
+import { regionInk, type RegionInk, regionChipClass, regionInkClass } from '@/components/admin/region-ink'
 
 const pageSize = 6
 
@@ -34,26 +35,17 @@ export function Board({ auctionId }: { auctionId: string }) {
   const [selectedLot, setSelectedLot] = useState<Lot | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
   const boardRef = useRef<HTMLDivElement>(null)
+  useModalFocus(boardRef, expanded, closeBoard)
 
   useEffect(() => {
     if (!expanded) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !document.fullscreenElement) setExpanded(false)
-    }
-
     function onFullscreen() {
       setFullscreen(document.fullscreenElement === boardRef.current)
       if (!document.fullscreenElement) setExpanded(false)
     }
 
-    document.addEventListener('keydown', onKey)
     document.addEventListener('fullscreenchange', onFullscreen)
     return () => {
-      document.body.style.overflow = previous
-      document.removeEventListener('keydown', onKey)
       document.removeEventListener('fullscreenchange', onFullscreen)
     }
   }, [expanded])
@@ -163,7 +155,7 @@ export function Board({ auctionId }: { auctionId: string }) {
             <FilterChip
               key={region.id}
               active={regionId === region.id}
-              ink={region.ink}
+              ink={regionInk[region.id]}
               onClick={() => pickRegion(region.id)}
             >
               {region.name}
@@ -298,21 +290,11 @@ function SaleRow({
   const region = regionOfLot(lot, clients)
   const price = displayedPrice(lot)
   return (
-    <tr
-      role="button"
-      tabIndex={0}
-      aria-label={`Ver información del lote ${lot.order}: ${lot.title}`}
-      onClick={onOpen}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          onOpen()
-        }
-      }}
-      className="cursor-pointer border-b border-border transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none last:border-b-0"
-    >
+    <tr className="border-b border-border transition-colors hover:bg-accent/60 last:border-b-0">
       <td className="pl-3 pr-2 py-3 font-semibold tabular text-foreground sm:px-4">
-        <LotNumber lot={lot} live={live} />
+        <button type="button" onClick={onOpen} aria-label={`Ver información del lote ${lot.order}: ${lot.title}`} className="min-h-11 min-w-11 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          <LotNumber lot={lot} live={live} />
+        </button>
       </td>
       <td className="hidden max-w-48 truncate px-4 py-3 text-muted-foreground sm:table-cell">
         {lot.sire || '—'}
@@ -329,7 +311,7 @@ function SaleRow({
       <td
         className={cn(
           'break-words px-2 py-3 font-semibold sm:px-4',
-          region ? regionInkClass[region.ink] : 'text-muted-foreground',
+          region ? regionInkClass[regionInk[region.id]] : 'text-muted-foreground',
         )}
       >
         {client?.name ?? 'Sin adjudicar'}
@@ -339,23 +321,12 @@ function SaleRow({
 }
 
 function LotInfoModal({ lot, clients, onClose }: { lot: Lot; clients: Client[]; onClose: () => void }) {
+  const dialogRef = useRef<HTMLElement>(null)
+  useModalFocus(dialogRef, true, onClose)
   const client = clientOfLot(lot, clients)
   const photos = lot.images?.filter(Boolean) ?? []
   const image = photos[0] || lot.image || '/placeholder.svg'
   const amount = displayedPrice(lot)
-
-  useEffect(() => {
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = previous
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [onClose])
 
   return (
     <div
@@ -365,6 +336,8 @@ function LotInfoModal({ lot, clients, onClose }: { lot: Lot; clients: Client[]; 
       }}
     >
       <section
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="lot-dialog-title"
@@ -379,7 +352,6 @@ function LotInfoModal({ lot, clients, onClose }: { lot: Lot; clients: Client[]; 
           </div>
           <button
             type="button"
-            autoFocus
             onClick={onClose}
             aria-label="Cerrar información del lote"
             title="Cerrar"

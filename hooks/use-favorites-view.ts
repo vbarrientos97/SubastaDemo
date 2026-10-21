@@ -1,27 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import {
-  parseFavoritesView,
-  readFavoritesViewCookie,
-  writeFavoritesViewCookie,
-  type FavoritesView,
-} from '@/lib/favorites-view'
+import { useSyncExternalStore } from 'react'
+import { readFavoritesViewCookie, writeFavoritesViewCookie, type FavoritesView } from '@/lib/favorites-view'
+
+const CHANGE_EVENT = 'subasta:favorites-view-changed'
+function subscribe(listener: () => void) {
+  window.addEventListener(CHANGE_EVENT, listener)
+  return () => window.removeEventListener(CHANGE_EVENT, listener)
+}
+const subscribeHydration = () => () => {}
 
 export function useFavoritesView() {
-  const [view, setViewState] = useState<FavoritesView>('columns')
-  const [ready, setReady] = useState(false)
-
-  useEffect(() => {
-    setViewState(readFavoritesViewCookie())
-    setReady(true)
-  }, [])
-
+  const view = useSyncExternalStore(subscribe, readFavoritesViewCookie, () => 'columns' as const)
+  const ready = useSyncExternalStore(subscribeHydration, () => true, () => false)
   function setView(next: FavoritesView) {
-    setViewState(next)
     writeFavoritesViewCookie(next)
     document.documentElement.dataset.favoritosVista = next
+    window.dispatchEvent(new Event(CHANGE_EVENT))
   }
-
-  return { view: ready ? view : parseFavoritesView(undefined), setView, ready }
+  return { view, setView, ready }
 }

@@ -20,4 +20,5 @@ jobs:
           version: 12.3.4
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - run: pnpm audit:prod
       - run: pnpm build

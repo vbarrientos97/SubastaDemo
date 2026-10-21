@@ -33,14 +33,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     >
       <LogicalBackGuard />
       {user?.role === 'buyer' && !bare ? <MainMenuDrawer floating /> : null}
-      {ready && user?.role === 'buyer' ? <BuyerNotificationToasts /> : null}
+      {ready && user?.role === 'buyer' ? <BuyerNotificationToasts key={user.id} /> : null}
       {isAdminRoute ? children : isAdminAccountRoute ? (
         <AdminShell>{children}</AdminShell>
       ) : (
         <>
           {bare || user || (anonymousVisitor && pathname === '/') ? null : <DesktopNav />}
           {bare || anonymousVisitor ? null : <DesktopSidebar />}
-          {children}
+          <div className={cn(!bare && !anonymousVisitor && 'lg:pl-[4.5rem]')}>{children}</div>
         </>
       )}
     </div>

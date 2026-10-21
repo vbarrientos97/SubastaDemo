@@ -1,44 +1,33 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import { buyer } from '@/lib/data/buyer'
 
-function photoKey(clientId: string) {
-  return `subasta.buyer-photo.${clientId}`
+const photoKey = (clientId: string) => `subasta.buyer-photo.${clientId}`
+const PHOTO_UPDATED_EVENT = 'subasta:buyer-photo-updated'
+function subscribe(listener: () => void) {
+  window.addEventListener(PHOTO_UPDATED_EVENT, listener)
+  window.addEventListener('storage', listener)
+  return () => {
+    window.removeEventListener(PHOTO_UPDATED_EVENT, listener)
+    window.removeEventListener('storage', listener)
+  }
 }
 
-const PHOTO_UPDATED_EVENT = 'subasta:buyer-photo-updated'
-
 export function useBuyerPhoto(clientId?: string) {
-  const [photo, setPhoto] = useState(buyer.photo)
-
-  useEffect(() => {
-    if (!clientId) return
-    try {
-      setPhoto(window.localStorage.getItem(photoKey(clientId)) || buyer.photo)
-    } catch {
-      setPhoto(buyer.photo)
-    }
-    function updatePhoto(event: Event) {
-      const detail = (event as CustomEvent<{ clientId: string; photo: string }>).detail
-      if (detail?.clientId === clientId) setPhoto(detail.photo)
-    }
-    window.addEventListener(PHOTO_UPDATED_EVENT, updatePhoto)
-    return () => window.removeEventListener(PHOTO_UPDATED_EVENT, updatePhoto)
+  const getSnapshot = useCallback(() => {
+    if (!clientId) return buyer.photo
+    try { return window.localStorage.getItem(photoKey(clientId)) || buyer.photo }
+    catch { return buyer.photo }
   }, [clientId])
-
+  const photo = useSyncExternalStore(subscribe, getSnapshot, () => buyer.photo)
   const savePhoto = useCallback((dataUrl: string) => {
     if (!clientId) return false
     try {
-      // Demo only: production MUST validate and store profile photos on the server.
       window.localStorage.setItem(photoKey(clientId), dataUrl)
-      setPhoto(dataUrl)
-      window.dispatchEvent(new CustomEvent(PHOTO_UPDATED_EVENT, { detail: { clientId, photo: dataUrl } }))
+      window.dispatchEvent(new Event(PHOTO_UPDATED_EVENT))
       return true
-    } catch {
-      return false
-    }
+    } catch { return false }
   }, [clientId])
-
   return { photo, savePhoto }
 }

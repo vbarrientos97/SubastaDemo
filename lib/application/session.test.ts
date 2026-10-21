@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import * as commands from '@/lib/application/session'
-import { migrateSessionState, type SessionState } from '@/lib/application/session-repository'
+import { type SessionState } from '@/lib/application/session-repository'
+import { migrateSessionState } from '@/lib/session/migrate'
 import { createSeed } from '@/lib/session/seed'
 import { validateAuction } from '@/lib/domain/auction'
 
@@ -31,11 +32,11 @@ test('bids reject inactive and non-catalog lots without changing state', () => {
 test('bids require safe whole amounts and preserve the minimum-price invariant', () => {
   const f = fixture()
   const lot = f.state.lots.find((item) => item.id === 'lote-02')!
-  for (const amount of [lot.currentBid, lot.currentBid - 1, lot.currentBid + 0.1, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+  for (const amount of [lot.currentBid + lot.minIncrement - 1, lot.currentBid, lot.currentBid - 1, lot.currentBid + 0.1, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
     assert.equal(commands.placeBid(f.repo, lot.id, amount).ok, false)
   }
-  assert.equal(commands.placeBid(f.repo, lot.id, lot.currentBid + 1).ok, true)
-  assert.equal(f.state.lots.find((item) => item.id === lot.id)?.currentBid, lot.currentBid + 1)
+  assert.equal(commands.placeBid(f.repo, lot.id, lot.currentBid + lot.minIncrement).ok, true)
+  assert.equal(f.state.lots.find((item) => item.id === lot.id)?.currentBid, lot.currentBid + lot.minIncrement)
 })
 
 test('administrative commands reject buyers and visitors before changing anything', () => {

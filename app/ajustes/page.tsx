@@ -1,7 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { readPreference, writePreference, subscribePreferences } from '@/lib/browser-preferences'
+
+import { useSyncExternalStore, useRef, useState, type ChangeEvent } from 'react'
 import { Bell, Camera } from 'lucide-react'
+import Image from 'next/image'
 import { AdminSettings } from '@/components/admin/admin-settings'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { ThemeToggle } from '@/components/account/theme-toggle'
@@ -18,17 +21,12 @@ function BuyerSettings() {
   const { photo, savePhoto } = useBuyerPhoto(client?.id)
   const [preview, setPreview] = useState<string | null>(null)
   const [photoMessage, setPhotoMessage] = useState('')
-  const [bidNotice, setBidNotice] = useState(true)
+  const bidNotice = useSyncExternalStore(subscribePreferences, () => readPreference('subasta.aviso-puja') !== 'false', () => true)
   const inputRef = useRef<HTMLInputElement>(null)
   const name = client?.name ?? user?.username ?? 'Usuario'
 
-  useEffect(() => {
-    setBidNotice(window.localStorage.getItem('subasta.aviso-puja') !== 'false')
-  }, [])
-
   function toggleBidNotice(enabled: boolean) {
-    setBidNotice(enabled)
-    window.localStorage.setItem('subasta.aviso-puja', String(enabled))
+    writePreference('subasta.aviso-puja', String(enabled))
     window.dispatchEvent(new CustomEvent('subasta:bid-notice-setting-changed', { detail: enabled }))
   }
 
@@ -69,7 +67,9 @@ function BuyerSettings() {
 
         <section aria-labelledby="account-heading" className={cn(panel, 'flex flex-col items-center gap-4 p-5 text-center')}>
           <h1 id="account-heading" className="font-display text-xl font-bold text-foreground">Mi cuenta</h1>
-          <img
+          <Image
+            width={128}
+            height={128}
             src={preview ?? photo}
             alt={`Foto de ${name}`}
             className="h-32 w-32 rounded-full object-cover ring-1 ring-foreground/10"
