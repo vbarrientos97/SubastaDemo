@@ -1,20 +1,16 @@
 'use client'
 
-import Link from 'next/link'
 import { safeInternalPath } from '@/lib/internal-path'
 import { useEffect } from 'react'
-import { Eye, Timer, Gavel, Trophy } from 'lucide-react'
 import { currentAccount } from '@/lib/application/session'
 import { canViewLot } from '@/lib/domain/auction'
-import { categoryLabel, displayedPrice, formatLotBirthDate, isActiveLot, isUrgentLot } from '@/lib/domain/lot'
-import { formatUSD } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { eyebrow, panel, panelSm } from '@/lib/styles'
+import { eyebrow } from '@/lib/styles'
 import { TopBar } from '@/components/layout/top-bar'
-import { LiveGallery } from '@/components/auction/live-gallery'
-import { Countdown } from '@/components/auction/countdown'
-import { BidGate } from '@/components/auction/bid-gate'
-import { FavoriteButton } from '@/components/auction/favorite-button'
+import { LotDetailMedia, LotDetailHeading } from '@/components/auction/lot-detail-header'
+import { LotBidPanel, LotBidHistory } from '@/components/auction/lot-bidding'
+import { LotDetailFacts } from '@/components/auction/lot-detail-facts'
+import { PublicLotDetails } from '@/components/auction/public-lot-details'
 import { useSession } from '@/components/auth/session-provider'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { BackLink } from '@/components/layout/back-link'
@@ -62,280 +58,42 @@ export function LotScreen({ id }: { id: string }) {
     )
   }
 
-  if (!account) {
-    return (
-      <>
-        <TopBar title={`Lote ${String(lot.order).padStart(2, '0')}`} backHref={backHref} backHistory={!!safeReturn} />
-        <main className="flex flex-col gap-4 px-4 py-4 lg:mx-auto lg:max-w-4xl lg:px-6 lg:py-6">
-          <div className="hidden lg:block"><BackLink href={backHref} historyBack={!!safeReturn} /></div>
-          <div className="overflow-hidden rounded-2xl">
-            <LiveGallery image={lot.image} images={lot.images} title={`Lote ${lot.order}`} youtubeUrl={lot.youtubeUrl} />
-          </div>
-          <h1 className="font-display text-2xl font-bold">Lote {String(lot.order).padStart(2, '0')}</h1>
-          <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-border bg-surface p-4 text-sm">
-            <div><dt className="text-muted-foreground">Raza</dt><dd className="mt-1 font-semibold">{lot.breed || '—'}</dd></div>
-            <div><dt className="text-muted-foreground">Color</dt><dd className="mt-1 font-semibold">{lot.color ?? '—'}</dd></div>
-            <div><dt className="text-muted-foreground">Nacimiento</dt><dd className="mt-1 font-semibold">{formatLotBirthDate(lot.birthDate)}</dd></div>
-            <div><dt className="text-muted-foreground">Peso</dt><dd className="mt-1 font-semibold">{lot.weightKg.toLocaleString('es-CR')} kg</dd></div>
-            <div><dt className="text-muted-foreground">Padre</dt><dd className="mt-1 font-semibold">{lot.sire ?? '—'}</dd></div>
-            <div><dt className="text-muted-foreground">Madre</dt><dd className="mt-1 font-semibold">{lot.dam ?? '—'}</dd></div>
-          </dl>
-        </main>
-      </>
-    )
-  }
-
-  const active = isActiveLot(lot)
-  const urgent = isUrgentLot(lot)
-  const category = categoryLabel(lot.category, true)
+  if (!account) return <PublicLotDetails lot={lot} backHref={backHref} historyBack={!!safeReturn} />
 
   return (
     <>
       <TopBar title={`Lote ${String(lot.order).padStart(2, '0')}`} backHref={backHref} backHistory={!!safeReturn} />
 
       <div className="lg:mx-auto lg:grid lg:max-w-6xl lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-x-10 lg:px-6 lg:py-8">
-      <div className="lg:col-start-1">
-      <div className="mb-4 hidden lg:block"><BackLink href={backHref} historyBack={!!safeReturn} /></div>
-      <div className="flex items-center gap-3 px-4 pt-4 lg:px-0 lg:pt-0">
-        {active ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary-foreground">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-pulse-live absolute inline-flex h-full w-full rounded-full bg-primary-foreground" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary-foreground" />
-            </span>
-            En vivo
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-            {lot.status === 'closed' ? 'Lote cerrado' : 'Sin abrir'}
-          </span>
-        )}
-        {auction?.status === 'abierta' ? (
-          <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-            <Eye className="h-4 w-4" />
-            512 viendo
-          </span>
-        ) : null}
-      </div>
-
-      <div className="mt-6 px-4 lg:px-0">
-      <div className="overflow-hidden rounded-2xl">
-      <LiveGallery
-        image={lot.image}
-        images={lot.images}
-        title={lot.title}
-        youtubeUrl={lot.youtubeUrl}
-        soldPaddle={account?.role === 'admin' && lot.status === 'closed' && 'soldToPaddle' in lot ? lot.soldToPaddle : undefined}
-      />
-
-      {active && lot.secondsLeft != null && (
-        <div
-          className={cn(
-            'flex items-center justify-between gap-3 px-4 py-3',
-            urgent ? 'bg-primary text-primary-foreground' : 'bg-surface-2 text-foreground',
-          )}
-        >
-          <div className="flex items-center gap-2.5">
-            <Timer className="h-6 w-6 shrink-0" />
-            <div className="leading-tight">
-              <p className="text-sm font-bold uppercase tracking-wide">
-                {urgent ? '¡Tiempo extendido!' : 'Cierre del lote'}
-              </p>
-              <p className={cn('text-xs', urgent ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
-                {urgent ? '+30s añadidos por última puja' : 'Puja antes del cierre'}
-              </p>
-            </div>
-          </div>
-          <div
-            className={cn(
-              'rounded-xl px-3 py-1.5 font-display text-xl font-bold tabular sm:text-2xl',
-              urgent ? 'bg-black/25' : 'bg-warning/15 text-warning',
-            )}
-          >
-            <Countdown seconds={lot.secondsLeft} />
-          </div>
+        <div className="lg:col-start-1">
+          <div className="mb-4 hidden lg:block"><BackLink href={backHref} historyBack={!!safeReturn} /></div>
+          <LotDetailMedia lot={lot} auctionOpen={auction?.status === 'abierta'} soldPaddle={account?.role === 'admin' && lot.status === 'closed' && 'soldToPaddle' in lot ? lot.soldToPaddle : undefined} />
+          <LotDetailHeading lot={lot} />
         </div>
-      )}
-      </div>
-      </div>
 
-      <div className="flex flex-col gap-5 px-4 py-5 lg:px-0 lg:pt-5">
-        <section className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <nav className={cn(eyebrow, 'flex items-center gap-1.5 text-muted-foreground')}>
-              <Link href="/" className="hover:text-foreground">
-                Inicio
-              </Link>
-              <span aria-hidden>/</span>
-              <span>{category}</span>
-              <span aria-hidden>/</span>
-              <span className="text-foreground">Lote {String(lot.order).padStart(2, '0')}</span>
-            </nav>
-            <FavoriteButton lotId={lot.id} label />
-          </div>
+        <LotBidPanel lot={lot} />
 
-          <div>
-            <h1 className="font-display text-2xl font-bold leading-tight text-foreground sm:text-3xl lg:text-4xl">
-              Lote {String(lot.order).padStart(2, '0')}
-            </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="text-base font-semibold text-primary sm:text-lg">{lot.registeredName}</span>
-              <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
-                {lot.breed} · {category}
-              </span>
-              <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
-                {lot.headCount} {lot.headCount === 1 ? 'cabeza' : 'cabezas'}
-              </span>
-            </div>
-            {lot.seller ? <p className="mt-2 text-sm text-muted-foreground">Vendedor: {lot.seller}</p> : null}
-          </div>
-        </section>
-      </div>
-      </div>
-
-      <aside className="px-4 lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:px-0">
-        {active ? (
-          <section className={cn(panel, 'flex flex-col gap-2 p-4')}>
-            <div className="flex items-baseline justify-between">
-              <span className={cn(eyebrow, 'text-muted-foreground')}>
-                Realiza tu puja
-              </span>
-              <span className="text-[11px] font-semibold text-muted-foreground">
-                Mín ${formatUSD(lot.currentBid + lot.minIncrement)}
-              </span>
-            </div>
-            <BidGate lot={lot} size="lg" promptLogin />
-          </section>
-        ) : lot.status === 'closed' ? (
-          <section className="flex items-center gap-3 rounded-3xl border border-success/30 bg-success/10 p-4">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-success/20 text-success">
-              <Trophy className="h-6 w-6" />
-            </span>
-            <div>
-              <p className={cn(eyebrow, 'text-muted-foreground')}>
-                {('buyerOutcome' in lot && lot.buyerOutcome === 'won') ? 'Ganado por ti' : 'Vendido'}
-              </p>
-              <p className="font-display text-xl font-bold tabular text-success sm:text-2xl">
-                ${formatUSD(lot.finalPrice ?? 0)}{' '}
-                <span className="text-xs font-semibold text-muted-foreground">USD</span>
-              </p>
-            </div>
-          </section>
-        ) : (
-          <BidGate lot={lot} size="lg" interactive={false} promptLogin />
-        )}
-      </aside>
-
-      <main className="flex flex-col gap-5 px-4 py-5 lg:col-start-1 lg:px-0 lg:py-0">
-        <dl className="grid grid-cols-2 gap-3 rounded-2xl border border-border bg-surface p-4 text-sm">
-          <div><dt className="text-muted-foreground">Raza</dt><dd className="mt-1 font-semibold">{lot.breed || '—'}</dd></div>
-          <div><dt className="text-muted-foreground">Color</dt><dd className="mt-1 font-semibold">{lot.color ?? '—'}</dd></div>
-          <div><dt className="text-muted-foreground">Nacimiento</dt><dd className="mt-1 font-semibold">{formatLotBirthDate(lot.birthDate)}</dd></div>
-          <div><dt className="text-muted-foreground">Peso</dt><dd className="mt-1 font-semibold">{lot.weightKg.toLocaleString('es-CR')} kg</dd></div>
-          <div><dt className="text-muted-foreground">Padre</dt><dd className="mt-1 font-semibold">{lot.sire ?? '—'}</dd></div>
-          <div><dt className="text-muted-foreground">Madre</dt><dd className="mt-1 font-semibold">{lot.dam ?? '—'}</dd></div>
-        </dl>
-        {(lot.sire || lot.dam) && (
-          <section className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-input bg-surface-2 p-4 dark:border-orange-900/50 dark:bg-orange-950/40">
-              <span className={cn(eyebrow, 'text-muted-foreground dark:text-orange-200/80')}>
-                Padre
-              </span>
-              <p className="mt-1 font-semibold text-foreground">{lot.sire}</p>
-            </div>
-            <div className="rounded-2xl border border-input bg-surface-2 p-4 dark:border-orange-900/50 dark:bg-orange-950/40">
-              <span className={cn(eyebrow, 'text-muted-foreground dark:text-orange-200/80')}>
-                Madre
-              </span>
-              <p className="mt-1 font-semibold text-foreground">{lot.dam}</p>
-            </div>
-          </section>
-        )}
-
-        <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl font-bold text-foreground sm:text-2xl">
-              Pujas
-              <span className="mt-1 block h-1 w-10 rounded-full bg-primary" />
-            </h2>
-            {active && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success">
-                <span className="h-2 w-2 rounded-full bg-success" />
-                En vivo
-              </span>
-            )}
-          </div>
-
-          <div className={cn(panelSm, 'p-4')}>
-            <span className={cn(eyebrow, 'text-muted-foreground')}>
-              {active ? 'Puja líder actual' : lot.status === 'closed' ? (('buyerOutcome' in lot && lot.buyerOutcome === 'won') ? 'Ganado por ti' : 'Vendido') : 'Puja ganadora'}
-            </span>
-            <p className="font-display text-2xl font-bold tabular text-success sm:text-3xl lg:text-4xl">
-              ${formatUSD(displayedPrice(lot), { decimals: true })}
-              <span className="ml-1.5 text-sm font-semibold text-muted-foreground">USD</span>
-            </p>
-            {lot.leader && (
-              <div className="mt-3">
-                <span className={cn(eyebrow, 'flex items-center gap-1.5 text-muted-foreground')}>
-                  <Gavel className="h-3.5 w-3.5" />
-                  Liderando por
+        <main className="flex flex-col gap-5 px-4 py-5 lg:col-start-1 lg:px-0 lg:py-0">
+          <LotDetailFacts lot={lot} />
+          {(lot.sire || lot.dam) && (
+            <section className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-input bg-surface-2 p-4 dark:border-orange-900/50 dark:bg-orange-950/40">
+                <span className={cn(eyebrow, 'text-muted-foreground dark:text-orange-200/80')}>
+                  Padre
                 </span>
-                <span className="mt-1.5 inline-flex items-center gap-2 rounded-full bg-success/10 px-3 py-1.5 text-sm font-semibold text-success ring-1 ring-success/25">
-                  <span className="h-2 w-2 rounded-full bg-success" />
-                  {lot.leader}
+                <p className="mt-1 font-semibold text-foreground">{lot.sire}</p>
+              </div>
+              <div className="rounded-2xl border border-input bg-surface-2 p-4 dark:border-orange-900/50 dark:bg-orange-950/40">
+                <span className={cn(eyebrow, 'text-muted-foreground dark:text-orange-200/80')}>
+                  Madre
                 </span>
+                <p className="mt-1 font-semibold text-foreground">{lot.dam}</p>
               </div>
-            )}
-          </div>
-
-          {lot.bids && lot.bids.length > 0 && (
-            <div className="overflow-hidden rounded-2xl border border-border">
-              <div className={cn(eyebrow, 'grid grid-cols-[1fr_auto_auto] gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-muted-foreground')}>
-                <span>Pujador</span>
-                <span className="text-right">Importe</span>
-                <span className="text-right">Hora</span>
-              </div>
-              <ul>
-                {lot.bids.map((bid, i) => {
-                  const leading = i === 0
-                  return (
-                    <li
-                      key={i}
-                      className={cn(
-                        'grid grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-border px-4 py-3 text-sm last:border-b-0',
-                        leading ? 'bg-success/5' : 'bg-surface',
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'flex items-center gap-2 truncate font-medium',
-                          leading ? 'text-foreground' : 'text-muted-foreground',
-                        )}
-                      >
-                        {leading && <span className="h-4 w-1 shrink-0 rounded-full bg-success" />}
-                        <span className="truncate">{bid.bidder}</span>
-                      </span>
-                      <span
-                        className={cn(
-                          'text-right font-bold tabular',
-                          leading ? 'text-success' : 'text-foreground',
-                        )}
-                      >
-                        ${formatUSD(bid.amount, { decimals: true })}
-                      </span>
-                      <span className="text-right text-[11px] leading-tight text-muted-foreground">
-                        {bid.date}
-                        <br />
-                        {bid.time}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
+            </section>
           )}
-        </section>
-      </main>
+
+          <LotBidHistory lot={lot} />
+        </main>
       </div>
     </>
   )

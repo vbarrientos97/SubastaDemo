@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useModalFocus } from '@/hooks/use-modal-focus'
 import { createPortal, flushSync } from 'react-dom'
-import Image from 'next/image'
-import { Maximize2, Search, X } from 'lucide-react'
+import { LotInfoModal } from '@/components/admin/lot-info-modal'
 import { BoardProjection } from '@/components/admin/board-projection'
-import { RegionSelect } from '@/components/admin/region-select'
-import { clientOfLot, regionOfLot, type Client } from '@/lib/domain/account'
+import { BoardFilters } from '@/components/admin/board-filters'
+import { BoardSalesTable } from '@/components/admin/board-sales-table'
+import { clientOfLot, type Client } from '@/lib/domain/account'
 import {
   boardLots,
   floorLot,
@@ -16,13 +16,11 @@ import {
   salesTotal,
   type BoardQuery,
 } from '@/lib/domain/board'
-import { categoryLabel, displayedPrice, statusLabel, type Lot } from '@/lib/domain/lot'
-import { regions } from '@/lib/domain/region'
-import { formatKg, formatUSD } from '@/lib/format'
-import { caption, eyebrow, field, panel, panelSm } from '@/lib/styles'
+import { displayedPrice, type Lot } from '@/lib/domain/lot'
+import { formatUSD } from '@/lib/format'
+import { eyebrow, panel, panelSm } from '@/lib/styles'
 import { cn } from '@/lib/utils'
 import { useSession } from '@/components/auth/session-provider'
-import { regionInk, type RegionInk, regionChipClass, regionInkClass } from '@/components/admin/region-ink'
 
 const pageSize = 6
 
@@ -68,16 +66,11 @@ export function Board({ auctionId }: { auctionId: string }) {
   const from = filtered.length === 0 ? 0 : current * pageSize + 1
   const to = Math.min(filtered.length, (current + 1) * pageSize)
 
-  function pickRegion(next: BoardQuery['regionId']) {
-    setRegionId(next)
-    setPage(0)
-  }
-
   function openBoard() {
     flushSync(() => setExpanded(true))
     const node = boardRef.current
     if (node && document.fullscreenElement !== node) {
-      void node.requestFullscreen?.().catch(() => {})
+      void node.requestFullscreen?.().catch(() => { })
     }
   }
 
@@ -92,7 +85,7 @@ export function Board({ auctionId }: { auctionId: string }) {
   function fillScreen() {
     const node = boardRef.current
     if (!node || document.fullscreenElement === node) return
-    void node.requestFullscreen?.().catch(() => {})
+    void node.requestFullscreen?.().catch(() => { })
   }
 
   return (
@@ -111,132 +104,33 @@ export function Board({ auctionId }: { auctionId: string }) {
       {lots.length === 0 ? (
         <p className="text-sm text-muted-foreground">Esta subasta todavía no tiene lotes.</p>
       ) : (
-      <section className={cn(panel, 'overflow-hidden')}>
-        <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="font-display text-base font-bold text-foreground">Pizarra del remate</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {from}–{to} de {filtered.length}
-            </p>
-          </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <label className="relative min-w-0 flex-1 lg:w-64 lg:flex-none">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={text}
-                onChange={(event) => {
-                  setText(event.target.value)
-                  setPage(0)
-                }}
-                placeholder="Lote o comprador"
-                aria-label="Buscar lote o comprador"
-                className={cn(field, 'pl-9')}
-              />
-            </label>
-            <button
-              type="button"
-              onClick={openBoard}
-              className="hidden shrink-0 items-center gap-2 rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-sm font-semibold text-foreground transition hover:border-foreground/25 hover:bg-foreground hover:text-background sm:inline-flex"
-            >
-              <Maximize2 className="h-4 w-4" />
-              Ampliar
-            </button>
-          </div>
-        </div>
-
-        <div className="px-3 py-3 sm:hidden">
-          <RegionSelect value={regionId} onChange={pickRegion} />
-        </div>
-        <div className="hidden gap-2 overflow-x-auto px-4 py-3 sm:flex">
-          <FilterChip active={regionId === 'todos'} onClick={() => pickRegion('todos')}>
-            Todos
-          </FilterChip>
-          {regions.map((region) => (
-            <FilterChip
-              key={region.id}
-              active={regionId === region.id}
-              ink={regionInk[region.id]}
-              onClick={() => pickRegion(region.id)}
-            >
-              {region.name}
-            </FilterChip>
-          ))}
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-left text-xs sm:min-w-[56rem] sm:table-auto sm:text-sm">
-            <thead>
-              <tr className={cn(caption, 'border-y border-border text-muted-foreground')}>
-                <th className="w-[14%] pl-3 pr-2 py-2.5 font-semibold sm:w-auto sm:px-4">Lote</th>
-                <th className="hidden px-4 py-2.5 font-semibold sm:table-cell">Padre</th>
-                <th className="hidden px-4 py-2.5 font-semibold sm:table-cell">Madre</th>
-                <th className="w-[20%] px-2 py-2.5 font-semibold sm:w-auto sm:px-4">Sexo</th>
-                <th className="w-[24%] px-2 py-2.5 font-semibold sm:w-auto sm:px-4">Precio</th>
-                <th className="px-2 py-2.5 font-semibold sm:px-4">Comprador</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((lot) => (
-                <SaleRow
-                  key={lot.id}
-                  lot={lot}
-                  clients={clients}
-                  live={active?.id === lot.id}
-                  onOpen={() => setSelectedLot(lot)}
-                />
-              ))}
-            </tbody>
-          </table>
-          {visible.length === 0 ? (
-            <p className="px-4 py-8 text-sm text-muted-foreground">Ningún lote coincide con la búsqueda.</p>
-          ) : null}
-        </div>
-
-        <div className="flex items-center justify-center gap-2 border-t border-border px-4 py-3 sm:justify-end">
-          <button
-            type="button"
-            disabled={current === 0}
-            onClick={() => setPage(current - 1)}
-            className="rounded-xl px-3 py-2 text-sm font-semibold text-foreground disabled:text-muted-foreground"
-          >
-            Anterior
-          </button>
-          <span className="text-sm font-semibold tabular text-muted-foreground">
-            {current + 1} / {pages}
-          </span>
-          <button
-            type="button"
-            disabled={current >= pages - 1}
-            onClick={() => setPage(current + 1)}
-            className="rounded-xl px-3 py-2 text-sm font-semibold text-foreground disabled:text-muted-foreground"
-          >
-            Siguiente
-          </button>
-        </div>
-      </section>
+        <section className={cn(panel, 'overflow-hidden')}>
+          <BoardFilters query={{ text, regionId }} onQueryChange={(query) => { setText(query.text); setRegionId(query.regionId); setPage(0) }} range={{ from, to, total: filtered.length }} onExpand={openBoard} />
+          <BoardSalesTable lots={visible} clients={clients} liveId={active?.id ?? null} onOpen={setSelectedLot} current={current} pages={pages} onPageChange={setPage} />
+        </section>
       )}
 
       {expanded
         ? createPortal(
-            <BoardProjection
-              boardRef={boardRef}
-              lots={filtered}
-              clients={clients}
-              liveId={active?.id ?? null}
-              prizes={prizes}
-              fullscreen={fullscreen}
-              onFill={fillScreen}
-              onClose={closeBoard}
-            />,
-            document.body,
-          )
+          <BoardProjection
+            boardRef={boardRef}
+            lots={filtered}
+            clients={clients}
+            liveId={active?.id ?? null}
+            prizes={prizes}
+            fullscreen={fullscreen}
+            onFill={fillScreen}
+            onClose={closeBoard}
+          />,
+          document.body,
+        )
         : null}
 
       {selectedLot
         ? createPortal(
-            <LotInfoModal lot={selectedLot} clients={clients} onClose={() => setSelectedLot(null)} />,
-            document.body,
-          )
+          <LotInfoModal lot={selectedLot} clients={clients} onClose={() => setSelectedLot(null)} />,
+          document.body,
+        )
         : null}
     </div>
   )
@@ -272,199 +166,5 @@ function PrizeStat({
         {lot ? `Lote ${lot.order}${client ? ` · ${client.name}` : ''}` : 'Sin venta cerrada'}
       </p>
     </div>
-  )
-}
-
-function SaleRow({
-  lot,
-  clients,
-  live,
-  onOpen,
-}: {
-  lot: Lot
-  clients: Client[]
-  live: boolean
-  onOpen: () => void
-}) {
-  const client = clientOfLot(lot, clients)
-  const region = regionOfLot(lot, clients)
-  const price = displayedPrice(lot)
-  return (
-    <tr className="border-b border-border transition-colors hover:bg-accent/60 last:border-b-0">
-      <td className="pl-3 pr-2 py-3 font-semibold tabular text-foreground sm:px-4">
-        <button type="button" onClick={onOpen} aria-label={`Ver información del lote ${lot.order}: ${lot.title}`} className="min-h-11 min-w-11 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-          <LotNumber lot={lot} live={live} />
-        </button>
-      </td>
-      <td className="hidden max-w-48 truncate px-4 py-3 text-muted-foreground sm:table-cell">
-        {lot.sire || '—'}
-      </td>
-      <td className="hidden max-w-48 truncate px-4 py-3 text-muted-foreground sm:table-cell">
-        {lot.dam || '—'}
-      </td>
-      <td className="px-2 py-3 font-medium text-muted-foreground sm:px-4">
-        {lot.category === 'macho' ? 'Macho' : 'Hembra'}
-      </td>
-      <td className="break-words px-2 py-3 font-semibold tabular text-foreground sm:px-4">
-        {price > 0 ? formatUSD(price) : '—'}
-      </td>
-      <td
-        className={cn(
-          'break-words px-2 py-3 font-semibold sm:px-4',
-          region ? regionInkClass[regionInk[region.id]] : 'text-muted-foreground',
-        )}
-      >
-        {client?.name ?? 'Sin adjudicar'}
-      </td>
-    </tr>
-  )
-}
-
-function LotInfoModal({ lot, clients, onClose }: { lot: Lot; clients: Client[]; onClose: () => void }) {
-  const dialogRef = useRef<HTMLElement>(null)
-  useModalFocus(dialogRef, true, onClose)
-  const client = clientOfLot(lot, clients)
-  const photos = lot.images?.filter(Boolean) ?? []
-  const image = photos[0] || lot.image || '/placeholder.svg'
-  const amount = displayedPrice(lot)
-
-  return (
-    <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-6"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-    >
-      <section
-        ref={dialogRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="lot-dialog-title"
-        className={cn(panel, 'relative flex max-h-[min(92dvh,56rem)] w-full max-w-3xl flex-col overflow-hidden shadow-2xl')}
-      >
-        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
-          <div className="min-w-0">
-            <p className={cn(eyebrow, 'text-primary')}>{statusLabel(lot.status)} · {categoryLabel(lot.category)}</p>
-            <h2 id="lot-dialog-title" className="mt-1 break-words font-display text-lg font-bold leading-tight text-foreground sm:text-2xl">
-              Lote {String(lot.order).padStart(2, '0')} · {lot.title}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar información del lote"
-            title="Cerrar"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </header>
-
-        <div className="min-h-0 overflow-y-auto">
-          <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(15rem,0.9fr)]">
-            <div className="relative aspect-[4/3] bg-surface-2 sm:aspect-auto sm:min-h-72">
-              <Image src={image} alt={lot.title} fill sizes="(max-width: 640px) 100vw, 50vw" className="object-cover" />
-            </div>
-            <div className="flex flex-col gap-5 p-5 sm:p-6">
-              <div>
-                <p className={cn(eyebrow, 'text-muted-foreground')}>Raza</p>
-                <p className="mt-1 font-display text-lg font-bold text-foreground">{lot.breed}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{lot.headCount} {lot.headCount === 1 ? 'cabeza' : 'cabezas'}</p>
-                {lot.color || lot.seller ? (
-                <p className="mt-2 text-sm text-muted-foreground">Color: {lot.color ?? '—'}{lot.seller ? ` · ${lot.seller}` : ''}</p>
-                ) : null}
-              </div>
-
-              <div className="rounded-2xl bg-success/10 p-4">
-                <p className={cn(eyebrow, 'text-muted-foreground')}>{lot.status === 'closed' ? 'Precio final' : 'Puja actual'}</p>
-                <p className="mt-1 font-display text-2xl font-bold tabular text-success sm:text-3xl">${formatUSD(amount, { decimals: true })}</p>
-                {client ? <p className="mt-1 text-sm font-semibold text-foreground">{lot.status === 'closed' ? 'Ganado por' : 'Lidera'}: {client.name}</p> : null}
-              </div>
-
-              {lot.sire || lot.dam ? (
-                <dl className="grid grid-cols-2 gap-3">
-                  {lot.sire ? <InfoField label="Padre" value={lot.sire} /> : null}
-                  {lot.dam ? <InfoField label="Madre" value={lot.dam} /> : null}
-                </dl>
-              ) : null}
-
-              <dl className="grid grid-cols-2 gap-3 border-t border-border pt-4">
-                <InfoField label="Peso" value={`${formatKg(lot.weightKg)} kg`} />
-                <InfoField label="Precio por kg" value={`$${formatUSD(lot.pricePerKg, { decimals: true })}`} />
-                {lot.opensAtLabel ? <InfoField label="Abre" value={lot.opensAtLabel} /> : null}
-                {lot.closesAtLabel ? <InfoField label="Cierra" value={lot.closesAtLabel} /> : null}
-              </dl>
-            </div>
-          </div>
-
-          {lot.bids?.length ? (
-            <section className="border-t border-border p-5 sm:p-6">
-              <h3 className="font-display text-base font-bold text-foreground">Pujas recientes</h3>
-              <ul className="mt-3 divide-y divide-border rounded-2xl border border-border">
-                {lot.bids.slice(0, 5).map((bid, index) => (
-                  <li key={`${bid.bidder}-${bid.time}-${index}`} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                    <span className="min-w-0">
-                      <span className="block truncate font-semibold text-foreground">{bid.bidder}</span>
-                      <span className="text-xs text-muted-foreground">{bid.date} · {bid.time}</span>
-                    </span>
-                    <span className="shrink-0 font-bold tabular text-success">${formatUSD(bid.amount, { decimals: true })}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function InfoField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <dt className={cn(eyebrow, 'text-muted-foreground')}>{label}</dt>
-      <dd className="mt-1 truncate text-sm font-semibold text-foreground">{value}</dd>
-    </div>
-  )
-}
-
-function LotNumber({ lot, live }: { lot: Lot; live: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-2">
-      {live ? <span className="h-1.5 w-1.5 rounded-full bg-primary" /> : null}
-      {lot.order}
-    </span>
-  )
-}
-
-function FilterChip({
-  active,
-  ink,
-  onClick,
-  children,
-}: {
-  active: boolean
-  ink?: RegionInk
-  onClick: () => void
-  children: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold',
-        ink
-          ? active
-            ? regionChipClass[ink].active
-            : regionChipClass[ink].idle
-          : active
-            ? 'bg-foreground text-background'
-            : 'bg-surface-2 text-muted-foreground',
-      )}
-    >
-      {children}
-    </button>
   )
 }

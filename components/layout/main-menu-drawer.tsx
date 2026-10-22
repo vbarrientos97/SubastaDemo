@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Bell, Gavel, Heart, Home, LogIn, Menu, X } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
@@ -13,6 +12,7 @@ import { BrandMark } from '@/components/layout/brand-mark'
 import { requestNavigation } from '@/lib/before-navigation'
 import { cn } from '@/lib/utils'
 import { mobileMenuTrigger } from '@/lib/styles'
+import { useMainMenuDrawer } from '@/components/layout/use-main-menu-drawer'
 
 export function MainMenuDrawer({ floating = false }: { floating?: boolean }) {
   const pathname = usePathname()
@@ -20,67 +20,7 @@ export function MainMenuDrawer({ floating = false }: { floating?: boolean }) {
   const { ready, user, favoriteLotIds, buyerLots, signOut } = useSession()
   const { unreadCount } = useDemoNotifications(buyerLots.map((lot) => lot.id))
   const notificationBadge = user?.role === 'buyer' ? unreadNotificationBadge(unreadCount) : undefined
-  const [open, setOpen] = useState(false)
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const closeRef = useRef<HTMLButtonElement>(null)
-  const menuRef = useRef<HTMLElement>(null)
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
-
-  const [previousPath, setPreviousPath] = useState(pathname)
-  if (previousPath !== pathname) { setPreviousPath(pathname); setOpen(false) }
-
-  const closeMenu = useCallback((afterClose?: () => void) => {
-    if (window.history.state?.mainMenuDrawer) {
-      if (afterClose) window.addEventListener('popstate', () => afterClose(), { once: true })
-      window.history.back()
-    } else {
-      afterClose?.()
-    }
-    setOpen(false)
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-    const previousOverflow = document.body.style.overflow
-    const trigger = triggerRef.current
-    document.body.style.overflow = 'hidden'
-    window.history.pushState({ ...window.history.state, mainMenuDrawer: true }, '', window.location.href)
-    closeRef.current?.focus()
-
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        closeMenu()
-        return
-      }
-      if (event.key !== 'Tab') return
-      const focusable = menuRef.current?.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      )
-      if (!focusable?.length) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (!menuRef.current?.contains(document.activeElement)) {
-        event.preventDefault()
-        ;(event.shiftKey ? last : first).focus()
-      } else if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-    function onPopState() { setOpen(false) }
-    document.addEventListener('keydown', onKey)
-    window.addEventListener('popstate', onPopState)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      window.removeEventListener('popstate', onPopState)
-      document.body.style.overflow = previousOverflow
-      trigger?.focus()
-    }
-  }, [closeMenu, open])
+  const { open, triggerRef, closeRef, menuRef, closeMenu, openMenu, hideMenu, handleTouchStart, handleTouchEnd } = useMainMenuDrawer(pathname)
 
   function handleMenuClick(event: React.MouseEvent<HTMLElement>) {
     const target = event.target as HTMLElement
@@ -100,13 +40,6 @@ export function MainMenuDrawer({ floating = false }: { floating?: boolean }) {
     closeMenu(() => router.push(anchor.href.replace(window.location.origin, '')))
   }
 
-  function handleTouchEnd(event: React.TouchEvent<HTMLElement>) {
-    const start = touchStartRef.current
-    const end = event.changedTouches[0]
-    touchStartRef.current = null
-    if (start && end.clientX - start.x > 60 && Math.abs(start.y - end.clientY) < 80) closeMenu()
-  }
-
   const items = [
     { href: '/', label: 'Inicio', icon: Home },
     ...(user?.role === 'buyer' ? [{ href: '/pujas', label: 'Pujas', icon: Gavel }] : []),
@@ -122,7 +55,7 @@ export function MainMenuDrawer({ floating = false }: { floating?: boolean }) {
         aria-label="Abrir menú"
         aria-expanded={open}
         aria-controls="main-mobile-menu"
-        onClick={() => setOpen(true)}
+        onClick={openMenu}
         className={cn(mobileMenuTrigger, floating && 'fixed right-4 top-3 z-50 lg:hidden')}
       >
         <span className="relative"><Menu className="h-6 w-6" />{notificationBadge ? <span aria-label={`${unreadCount} notificaciones sin leer`} className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">{notificationBadge}</span> : null}</span>
@@ -138,7 +71,7 @@ export function MainMenuDrawer({ floating = false }: { floating?: boolean }) {
             aria-modal="true"
             aria-labelledby="main-mobile-menu-title"
             onClickCapture={handleMenuClick}
-            onTouchStart={(event) => { touchStartRef.current = { x: event.touches[0].clientX, y: event.touches[0].clientY } }}
+            onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
             className="absolute inset-y-0 right-0 z-10 flex w-[min(20rem,88vw)] flex-col border-l border-border bg-drawer shadow-[var(--shadow-card)] dark:bg-background dark:shadow-2xl"
           >
@@ -170,7 +103,7 @@ export function MainMenuDrawer({ floating = false }: { floating?: boolean }) {
             </nav>
 
             <footer className="border-t border-border p-3">
-              {user ? <AccountDrawerSection onNavigate={() => setOpen(false)} /> : null}
+              {user ? <AccountDrawerSection onNavigate={hideMenu} /> : null}
             </footer>
           </aside>
         </div>, document.body,

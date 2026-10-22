@@ -31,9 +31,6 @@ export function LiveGallery({
   const [zoom, setZoom] = useState(false)
   const currentPhoto = photos[photoIndex] ?? photos[0]
 
-  const zoomRef = useRef<HTMLDivElement>(null)
-  useModalFocus(zoomRef, zoom, () => setZoom(false))
-
   const thumbs: { key: string; label: string; active: boolean; onClick: () => void; node: React.ReactNode }[] = [
     ...photos.map((photo, index) => ({
       key: `photo-${index}`,
@@ -63,102 +60,112 @@ export function LiveGallery({
 
   return (
     <>
-    <div className="relative aspect-[3/2] w-full overflow-hidden bg-black">
-      {/* Main view */}
-      {view === 'photo' && (
-        <Image
-          src={currentPhoto}
-          alt={title}
-          fill
-          priority
-          sizes="448px"
-          className="object-cover"
-        />
-      )}
-      {view === 'video' && video && (
-        <iframe
-          src={`https://www.youtube.com/embed/${video}`}
-          title={title}
-          className="absolute inset-0 h-full w-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
-      )}
-      {view === 'video' && !video && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black">
-          <Image src={videoCover} alt={title} fill className="object-cover opacity-70" sizes="448px" />
-          <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-black/60 text-white ring-1 ring-white/50">
-            <Play className="h-8 w-8 fill-white" />
-          </span>
-        </div>
-      )}
-
-      {soldPaddle != null && (view === 'photo' || view === 'video') && (
-        <SoldStamp paddle={soldPaddle} size="lg" />
-      )}
-
-      <button
-        type="button"
-        onClick={() => setZoom(true)}
-        aria-label="Ver imagen en grande"
-        className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-black/75"
-      >
-        <ZoomIn className="h-3.5 w-3.5" />
-        HD
-      </button>
-
-      {/* Thumbnails */}
-      <div className="absolute inset-x-3 bottom-3 flex gap-2">
-        {thumbs.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={t.onClick}
-            aria-label={t.label}
-            aria-pressed={t.active}
-            className={cn(
-              'relative h-16 w-16 overflow-hidden rounded-xl ring-2 transition',
-              t.active ? 'ring-primary' : 'ring-white/20 hover:ring-white/50',
-            )}
-          >
-            {t.node}
-          </button>
-        ))}
-      </div>
-    </div>
-
-    {zoom && (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-        ref={zoomRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onClick={() => setZoom(false)}
-      >
-        <button
-          type="button"
-          onClick={() => setZoom(false)}
-          aria-label="Cerrar"
-          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
-        >
-          <X className="h-5 w-5" />
-        </button>
-        <div
-          className="relative h-[min(86vh,920px)] w-full max-w-5xl"
-          onClick={(event) => event.stopPropagation()}
-        >
+      <div className="relative aspect-[3/2] w-full overflow-hidden bg-black">
+        {/* Main view */}
+        {view === 'photo' && (
           <Image
             src={currentPhoto}
             alt={title}
             fill
-            sizes="100vw"
-            className="object-contain"
+            priority
+            sizes="448px"
+            className="object-cover"
           />
+        )}
+        {view === 'video' && video && (
+          <iframe
+            src={`https://www.youtube.com/embed/${video}`}
+            title={title}
+            className="absolute inset-0 h-full w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        )}
+        {view === 'video' && !video && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black">
+            <Image src={videoCover} alt={title} fill className="object-cover opacity-70" sizes="448px" />
+            <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-black/60 text-white ring-1 ring-white/50">
+              <Play className="h-8 w-8 fill-white" />
+            </span>
+          </div>
+        )}
+
+        {soldPaddle != null && (view === 'photo' || view === 'video') && (
+          <SoldStamp paddle={soldPaddle} size="lg" />
+        )}
+
+        <button
+          type="button"
+          onClick={() => setZoom(true)}
+          aria-label="Ver imagen en grande"
+          className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-black/75"
+        >
+          <ZoomIn className="h-3.5 w-3.5" />
+          HD
+        </button>
+
+        {/* Thumbnails */}
+        <div className="absolute inset-x-3 bottom-3 flex gap-2">
+          {thumbs.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={t.onClick}
+              aria-label={t.label}
+              aria-pressed={t.active}
+              className={cn(
+                'relative h-16 w-16 overflow-hidden rounded-xl ring-2 transition',
+                t.active ? 'ring-primary' : 'ring-white/20 hover:ring-white/50',
+              )}
+            >
+              {t.node}
+            </button>
+          ))}
         </div>
       </div>
-    )}
+
+      <GalleryZoom open={zoom} photo={currentPhoto} title={title} onClose={() => setZoom(false)} />
+    </>
+  )
+}
+
+function GalleryZoom({ open, photo, title, onClose }: { open: boolean; photo: string; title: string; onClose: () => void }) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef, open, onClose)
+  return (
+    <>
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          ref={dialogRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          onClick={onClose}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div
+            className="relative h-[min(86vh,920px)] w-full max-w-5xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Image
+              src={photo}
+              alt={title}
+              fill
+              sizes="100vw"
+              className="object-contain"
+            />
+          </div>
+        </div>
+      )}
     </>
   )
 }
